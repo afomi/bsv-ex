@@ -69,16 +69,24 @@ defmodule BSV.Address do
       {:ok, %Address{
         pubkey_hash: <<83, 143, 209, 121, 200, 190, 15, 40, 156, 115, 14, 51, 181, 246, 163, 84, 27, 233, 102, 143>>
       }}
+
+      iex> Address.from_string("mpVjxzWwqLSgMnD2a6sfq64q24Vk2LTkBa", network: :test)
+      {:ok, %BSV.Address{
+        pubkey_hash: <<98, 126, 108, 182, 60, 135, 89, 51, 107, 57, 120, 77, 117, 179, 243, 40, 198, 95, 91, 96>>
+      }}
   """
-  @spec from_string(address_str()) :: {:ok, t()} | {:error, term()}
-  def from_string(address) when is_binary(address) do
-    version_byte = @version_bytes[BSV.network()]
+
+  @spec from_string(address_str(), keyword()) :: {:ok, t()} | {:error, term()}
+  def from_string(address, opts \\ []) when is_binary(address) do
+    network = Keyword.get(opts, :network, BSV.network())
+    version_byte = @version_bytes[network]
+
     case B58.decode58_check(address) do
       {:ok, {<<pubkey_hash::binary-20>>, ^version_byte}} ->
         {:ok, struct(__MODULE__, pubkey_hash: pubkey_hash)}
 
-      {:ok, {<<_pubkey_hash::binary-20>>, version_byte}} ->
-        {:error, {:invalid_base58_check, version_byte, BSV.network()}}
+      {:ok, {<<_pubkey_hash::binary-20>>, wrong_version_byte}} ->
+        {:error, {:invalid_base58_check, wrong_version_byte, network}}
 
       _error ->
         {:error, :invalid_address}
