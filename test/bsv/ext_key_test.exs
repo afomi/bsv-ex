@@ -7,6 +7,8 @@ defmodule BSV.ExtKeyTest do
   @test_seed "5bd995f07cbaeeb8c1fb4d52db5884471ae80b82f7c07094bfc77b2f4742a76a1d72d25ad58d011ecff16b1b9b0ae225e2fc084cad91a176527b4bca50047025"
   @test_xprv "xprv9s21ZrQH143K3qcbMJpvTQQQ1zRCPaZjXUD1zPouMDtKY9QQQ9DskzrZ3Cx38GnYXpgY2awCmJfz2QXkpxLN3Pp2PmUddbnrXziFtArpZ5v"
   @test_xpub "xpub661MyMwAqRbcGKh4TLMvpYM8a2Fgo3Hath8cnnDWuZRJQwjYwgY8JoB2tTgiTDdwf4rdGvgUpGhGNH54Ycb8vegrhHVVpdfYCdBBii94CLF"
+  @test_tprv "tprv8ZgxMBicQKsPeer81sgRd42PL7qQd6bjs288rpEMqCNoKk9VPWZdGkDzxP7h8eAruGDK2gYxvfFnVG5VxAgJrT5cvQgwHxWuT6TgKvGc1DZ"
+  @test_tpub "tpubD6NzVbkrYhZ4Y7suuXM22TgVu9MLnRneSKiv9LGfFUBCAEQG1uPDTEqs8VmVyibBSyPXtWCMMNXK4TZfwUSNp699ktEoWAKmnambUgCsghP"
   @extkey %BSV.ExtKey{
     chain_code: <<178, 208, 232, 46, 183, 65, 27, 66, 14, 172, 46, 66, 222, 84, 220, 98, 70, 249, 25, 3, 50, 209, 218, 236, 96, 142, 211, 79, 59, 166, 41, 106>>,
     child_index: 0,
@@ -118,6 +120,80 @@ defmodule BSV.ExtKeyTest do
         assert {:ok, extkey} = ExtKey.from_seed(v["seed"], encoding: :hex)
         assert ExtKey.to_string(extkey) == v["bip32_xprv"]
       end
+    end
+  end
+
+  describe "Testnet (tprv/tpub)" do
+    # switch to testnet for this describe block, and restore afterward
+    setup do
+      prev = BSV.network()
+      Application.put_env(:bsv, :network, :test)
+      on_exit(fn -> Application.put_env(:bsv, :network, prev) end)
+      :ok
+    end
+
+    test "from_seed/2 produces tprv" do
+      assert {:ok, %ExtKey{} = extkey} = ExtKey.from_seed(@test_seed, encoding: :hex)
+
+      tprv = ExtKey.to_string(extkey)
+      assert String.starts_with?(tprv, "tprv")
+      assert tprv == @test_tprv
+    end
+
+    test "to_public produces tpub" do
+      assert {:ok, %ExtKey{} = extkey} = ExtKey.from_seed(@test_seed, encoding: :hex)
+
+      tpub = extkey |> ExtKey.to_public() |> ExtKey.to_string()
+      assert String.starts_with?(tpub, "tpub")
+      assert tpub == @test_tpub
+    end
+
+    test "from_string/1 decodes tprv " do
+      {:ok, %ExtKey{} = extkey} = ExtKey.from_seed(@test_seed, encoding: :hex)
+      tprv = ExtKey.to_string(extkey)
+
+      assert String.starts_with?(tprv, "tprv")
+      assert {:ok, %ExtKey{} = parsed} = ExtKey.from_string(tprv)
+      assert tprv == @test_tprv
+
+      # round-trip equality on the serialized form
+      assert ExtKey.to_string(parsed) == tprv
+
+      # public conversion is also consistent
+      assert ExtKey.to_public(parsed) |> ExtKey.to_string()
+            == ExtKey.to_public(extkey) |> ExtKey.to_string()
+    end
+
+    test "from_string/1 decodes tpub and round-trips" do
+      {:ok, %ExtKey{} = extkey} = ExtKey.from_seed(@test_seed, encoding: :hex)
+      tpub = extkey |> ExtKey.to_public() |> ExtKey.to_string()
+
+      assert String.starts_with?(tpub, "tpub")
+      assert {:ok, %ExtKey{} = parsed_pub} = ExtKey.from_string(tpub)
+      assert is_nil(parsed_pub.privkey)
+
+      # round-trip equality on the serialized form
+      assert ExtKey.to_public(parsed_pub) |> ExtKey.to_string() == tpub
+    end
+
+    test "to_public/1 swaps version bytes to testnet pub (tpub)" do
+      # testnet pub version bytes per module under :test
+      expected_pub_version = <<4, 53, 135, 207>>
+
+      {:ok, %ExtKey{} = extkey} = ExtKey.from_seed(@test_seed, encoding: :hex)
+      pub = ExtKey.to_public(extkey)
+
+      assert is_nil(pub.privkey)
+      assert pub.version == expected_pub_version
+
+      assert ExtKey.to_string(pub) |> String.starts_with?("tpub")
+    end
+
+    test "to_string/1 emits tprv for private and tpub for public on testnet" do
+      {:ok, %ExtKey{} = extkey} = ExtKey.from_seed(@test_seed, encoding: :hex)
+
+      assert ExtKey.to_string(extkey) |> String.starts_with?("tprv")
+      assert ExtKey.to_public(extkey) |> ExtKey.to_string() |> String.starts_with?("tpub")
     end
   end
 
