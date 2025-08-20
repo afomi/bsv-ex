@@ -190,7 +190,7 @@ defmodule BSV.ExtKey do
       }}
   """
   @spec from_string(xprv() | xpub()) :: {:ok, t()} | {:error, term()}
-  def from_string(<<"xprv", _::binary>> = xprv) do
+  def from_string(<<prefix::binary-4, _::binary>> = xprv) when prefix in ["xprv", "tprv"] do
     <<version_byte, prefix::binary>> = version = @privkey_version_bytes[BSV.network()]
 
     with {:ok, {data, <<^version_byte>>}} when byte_size(data) == 77 <- B58.decode58_check(xprv) do
@@ -222,10 +222,10 @@ defmodule BSV.ExtKey do
     end
   end
 
-  def from_string(<<"xpub", _::binary>> = xprv) do
+  def from_string(<<prefix::binary-4, _::binary>> = xpub) when prefix in ["xpub", "tpub"] do
     <<version_byte, prefix::binary>> = version = @pubkey_version_bytes[BSV.network()]
 
-    with {:ok, {data, <<^version_byte>>}} when byte_size(data) == 77 <- B58.decode58_check(xprv) do
+    with {:ok, {data, <<^version_byte>>}} when byte_size(data) == 77 <- B58.decode58_check(xpub) do
       <<
         ^prefix::binary-3,
         depth::8,
