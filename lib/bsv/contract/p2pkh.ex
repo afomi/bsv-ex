@@ -38,19 +38,30 @@ defmodule BSV.Contract.P2PKH do
 
   @impl true
   def locking_script(ctx, %{address: address}) do
-    ctx
-    |> op_dup
-    |> op_hash160
-    |> push(address.pubkey_hash)
-    |> op_equalverify
-    |> op_checksig
+    case address do
+      %BSV.Address{} -> ctx
+        |> op_dup
+        |> op_hash160
+        |> push(address.pubkey_hash)
+        |> op_equalverify
+        |> op_checksig
+
+      _ ->
+        raise ArgumentError, "expected %{address: %BSV.Address{}} with a 20-byte pubkey_hash"
+    end
   end
 
   @impl true
   def unlocking_script(ctx, %{keypair: keypair}) do
-    ctx
-    |> sig(keypair.privkey)
-    |> push(PubKey.to_binary(keypair.pubkey))
+    case keypair do
+      %BSV.KeyPair{} ->
+        ctx
+        |> sig(keypair.privkey)
+        |> push(PubKey.to_binary(keypair.pubkey))
+
+      _ ->
+        raise ArgumentError, "expected %{keypair: %BSV.KeyPair{}}"
+    end
   end
 
 end
