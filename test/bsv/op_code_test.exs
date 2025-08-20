@@ -12,19 +12,20 @@ defmodule BSV.OpCodeTest do
   describe "OpCode.to_atom/1" do
     test "converts integers to atoms" do
       assert OpCode.to_atom(0) == :OP_FALSE
+      assert OpCode.to_atom(1) == :OP_PUSHBYTES_1
       assert OpCode.to_atom(96) == :OP_16
       assert OpCode.to_atom(97) == :OP_NOP
     end
 
     test "returns nil if invalid op code" do
-      assert OpCode.to_atom(1) == nil
+      assert BSV.OpCode.to_atom(186) == nil
     end
   end
 
   describe "OpCode.to_atom!/1" do
     test "raises error if invalid op code" do
       assert_raise BSV.DecodeError, ~r/invalid op code/i, fn ->
-        OpCode.to_atom!(1)
+        OpCode.to_atom!(186)
       end
     end
   end
