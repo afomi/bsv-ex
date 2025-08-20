@@ -2,23 +2,57 @@ name: Elixir CI
 
 on:
   push:
-    branches: [ master ]
+    branches: ["**"]
   pull_request:
-    branches: [ master ]
+    branches: ["**"]
+  workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    name: OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
+    name: OTP ${{ matrix.otp }} / Elixir ${{ matrix.elixir }}
     strategy:
+      fail-fast: false
       matrix:
-        otp: ['22.3', '23.3', '24.1']
-        elixir: ['1.11.4', '1.12.3']
+        include:
+          - elixir: "1.12.3"
+            otp: "24.3.4.17"
+
+          # Modern Elixir w/ modern OTP
+          - elixir: "1.18.4"
+            otp: "28.0"
+
+    env:
+      MIX_ENV: test
+
     steps:
-      - uses: actions/checkout@v2
-      - uses: erlef/setup-beam@v1
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up BEAM
+        uses: erlef/setup-beam@v1
         with:
-          otp-version: ${{matrix.otp}}
-          elixir-version: ${{matrix.elixir}}
-      - run: mix deps.get
-      - run: mix test
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
+          install-hex: true
+          install-rebar: true
+
+      - name: Cache deps and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+            ~/.mix
+          key: ${{ runner.os }}-mix-${{ matrix.elixir }}-${{ matrix.otp }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ matrix.elixir }}-${{ matrix.otp }}-
+
+      - name: Deps
+        run: mix deps.get --only $MIX_ENV
+
+      - name: Compile
+        run: mix compile
+
+      - name: Test
+        run: mix test --color
