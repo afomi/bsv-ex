@@ -141,6 +141,14 @@ defmodule BSV.OpCode do
     {:OP_CHECKLOCKTIMEVERIFY, 177},
     {:OP_CHECKSEQUENCEVERIFY, 178},
 
+    # Chronicle restored/new opcodes — canonical names alias NOP4..NOP8.
+    # Per bitcoin-sv src/script/opcodes.h:137-146, these are primary; NOPs are aliases.
+    {:OP_SUBSTR, 179},
+    {:OP_LEFT, 180},
+    {:OP_RIGHT, 181},
+    {:OP_LSHIFTNUM, 182},
+    {:OP_RSHIFTNUM, 183},
+
     # expansion
     {:OP_NOP1, 176},
     {:OP_NOP2, 177},

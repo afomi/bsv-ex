@@ -29,6 +29,16 @@ defmodule BSV.OpCodeTest do
       assert OpCode.to_atom(178) == :OP_CHECKSEQUENCEVERIFY
     end
 
+    test "returns Chronicle canonical names for bytes 179..183" do
+      # Per bitcoin-sv src/script/opcodes.h:137-146, Chronicle restores/introduces
+      # these as primary; OP_NOP4..NOP8 are aliases.
+      assert OpCode.to_atom(179) == :OP_SUBSTR
+      assert OpCode.to_atom(180) == :OP_LEFT
+      assert OpCode.to_atom(181) == :OP_RIGHT
+      assert OpCode.to_atom(182) == :OP_LSHIFTNUM
+      assert OpCode.to_atom(183) == :OP_RSHIFTNUM
+    end
+
     test "returns nil if invalid op code" do
       assert BSV.OpCode.to_atom(186) == nil
     end
@@ -49,6 +59,11 @@ defmodule BSV.OpCodeTest do
       assert OpCode.to_integer(:OP_NOP) == 97
       assert OpCode.to_integer(:OP_CHECKLOCKTIMEVERIFY) == 177
       assert OpCode.to_integer(:OP_CHECKSEQUENCEVERIFY) == 178
+      assert OpCode.to_integer(:OP_SUBSTR) == 179
+      assert OpCode.to_integer(:OP_LEFT) == 180
+      assert OpCode.to_integer(:OP_RIGHT) == 181
+      assert OpCode.to_integer(:OP_LSHIFTNUM) == 182
+      assert OpCode.to_integer(:OP_RSHIFTNUM) == 183
     end
 
     test "returns nil if invalid op code" do

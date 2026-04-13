@@ -15,6 +15,13 @@ defmodule BSV.VM do
   The entire script is evaluated and when if the end result contains a truthy
   value on the top of the stack, it is a valid script. Otherwise it is invalid.
   This is known as a predicate - an equation that evaluates to true or false.
+
+  ## Chronicle (April 2026)
+
+  This VM implements Chronicle-era BSV semantics. OP_VER, OP_VERIF, OP_VERNOTIF,
+  OP_2MUL, OP_2DIV, OP_SUBSTR, OP_LEFT, OP_RIGHT, OP_LSHIFTNUM and OP_RSHIFTNUM
+  are active. Consumers targeting pre-Chronicle consensus should pin to an older
+  release.
   """
   import Bitwise
   alias BSV.{PubKey, Script, ScriptNum, Sig, Tx, TxOut, Util}
@@ -76,11 +83,11 @@ defmodule BSV.VM do
     do: {:ok, vm}
 
   def eval(%__MODULE__{if_stack: [{:IF, false} | _]} = vm, [op | rest])
-    when op not in [:OP_IF, :OP_ELSE, :OP_ENDIF],
+    when op not in [:OP_IF, :OP_VERIF, :OP_VERNOTIF, :OP_ELSE, :OP_ENDIF],
     do: eval(vm, rest)
 
   def eval(%__MODULE__{if_stack: [{:ELSE, false} | _]} = vm, [op | rest])
-    when op not in [:OP_IF, :OP_ENDIF],
+    when op not in [:OP_IF, :OP_VERIF, :OP_VERNOTIF, :OP_ENDIF],
     do: eval(vm, rest)
 
   def eval(%__MODULE__{} = vm, [chunk | rest]) do
@@ -114,8 +121,10 @@ defmodule BSV.VM do
       :OP_VER -> op_ver(vm)
       :OP_IF -> op_if(vm)
       :OP_NOTIF -> op_notif(vm)
-      :OP_VERIF -> op_verif(vm)
-      :OP_VERNOTIF -> op_vernotif(vm)
+      # Post-Chronicle OP_VERIF/OP_VERNOTIF are aliases for OP_IF/OP_NOTIF.
+      # See bitcoin-sv src/script/interpreter.cpp:771-783 (falls through).
+      :OP_VERIF -> op_if(vm)
+      :OP_VERNOTIF -> op_notif(vm)
       :OP_ELSE -> op_else(vm)
       :OP_ENDIF -> op_endif(vm)
       :OP_VERIFY -> op_verify(vm)
@@ -145,6 +154,9 @@ defmodule BSV.VM do
       # 4. Data manipulation
       :OP_CAT -> op_cat(vm)
       :OP_SPLIT -> op_split(vm)
+      :OP_SUBSTR -> op_substr(vm)
+      :OP_LEFT -> op_left(vm)
+      :OP_RIGHT -> op_right(vm)
       :OP_NUM2BIN -> op_num2bin(vm)
       :OP_BIN2NUM -> op_bin2num(vm)
       :OP_SIZE -> op_size(vm)
@@ -173,6 +185,8 @@ defmodule BSV.VM do
       :OP_MOD -> op_mod(vm)
       :OP_LSHIFT -> op_lshift(vm)
       :OP_RSHIFT -> op_rshift(vm)
+      :OP_LSHIFTNUM -> op_lshiftnum(vm)
+      :OP_RSHIFTNUM -> op_rshiftnum(vm)
       :OP_BOOLAND -> op_booland(vm)
       :OP_BOOLOR -> op_boolor(vm)
       :OP_NUMEQUAL -> op_numequal(vm)
@@ -252,11 +266,20 @@ defmodule BSV.VM do
   def op_nop(%__MODULE__{} = vm), do: vm
 
   @doc """
-  Puts the version of the protocol under which this transaction will be
-  evaluated onto the stack. **DISABLED**
+  Pushes the transaction version (4-byte little-endian) onto the stack.
+  Restored in the Chronicle upgrade (April 2026).
+  See bitcoin-sv src/script/interpreter.cpp:596-606.
+
+  Requires the VM to have been evaluated with a transaction context
+  (`ctx: {%Tx{}, vin, %TxOut{}}`), otherwise errors.
   """
   @spec op_ver(t()) :: t()
-  def op_ver(%__MODULE__{} = vm), do: err(vm, "OP_VER disabled")
+  def op_ver(%__MODULE__{ctx: {%Tx{version: version}, _vin, _txout}} = vm) do
+    put_in(vm.stack, [<<version::little-32>> | vm.stack])
+  end
+
+  def op_ver(%__MODULE__{} = vm),
+    do: err(vm, "OP_VER requires a transaction context")
 
   @doc """
   Removes the top of the stack. If the top value is truthy, statements between
@@ -291,24 +314,6 @@ defmodule BSV.VM do
     |> op_drop()
     |> Map.update(:if_stack, [], & [{:IF, !true?(top)} | &1])
   end
-
-  @doc """
-  Removes the top of the stack. If the top value is equal to the version of the
-  protocol under which the transaction is evaluated, statements between OP_IF
-  and OP_ELSE are executed. Otherwise statements between OP_ELSE and OP_ENDIF
-  are executed. **DISABLED**
-  """
-  @spec op_verif(t()) :: t()
-  def op_verif(%__MODULE__{} = vm), do: err(vm, "OP_VERIF disabled")
-
-  @doc """
-  Removes the top of the stack. If the top value is not equal to the version of
-  the protocol under which the transaction is evaluated, statements between
-  OP_IF and OP_ELSE are executed. Otherwise statements between OP_ELSE and
-  OP_ENDIF are executed. **DISABLED**
-  """
-  @spec op_vernotif(t()) :: t()
-  def op_vernotif(%__MODULE__{} = vm), do: err(vm, "OP_VERNOTIF disabled")
 
   @doc """
   If the preceding OP_IF or OP_NOTIF was not executed, the the following
@@ -595,6 +600,80 @@ defmodule BSV.VM do
   end
 
   @doc """
+  Replaces the third-from-top stack element with the substring starting at
+  offset (second-from-top) of length (top). Restored in the Chronicle upgrade
+  (April 2026). See bitcoin-sv src/script/interpreter.cpp:607-639.
+  """
+  @spec op_substr(t()) :: t()
+  def op_substr(%__MODULE__{stack: stack} = vm)
+    when length(stack) < 3,
+    do: err(vm, "OP_SUBSTR invalid stack length")
+
+  def op_substr(%__MODULE__{stack: [len_bin, off_bin, data | stack]} = vm) do
+    len = ScriptNum.decode(len_bin)
+    offset = ScriptNum.decode(off_bin)
+    size = byte_size(data)
+
+    cond do
+      offset < 0 or offset >= size or len < 0 or len > size - offset ->
+        err(vm, "OP_SUBSTR invalid number range")
+
+      true ->
+        <<_::binary-size(offset), sub::binary-size(len), _::binary>> = data
+        put_in(vm.stack, [sub | stack])
+    end
+  end
+
+  @doc """
+  Replaces the second-from-top stack element with its leftmost N bytes, where
+  N is the top element. Restored in the Chronicle upgrade (April 2026).
+  See bitcoin-sv src/script/interpreter.cpp:640-664.
+  """
+  @spec op_left(t()) :: t()
+  def op_left(%__MODULE__{stack: stack} = vm)
+    when length(stack) < 2,
+    do: err(vm, "OP_LEFT invalid stack length")
+
+  def op_left(%__MODULE__{stack: [len_bin, data | stack]} = vm) do
+    len = ScriptNum.decode(len_bin)
+    size = byte_size(data)
+
+    cond do
+      len < 0 or len > size ->
+        err(vm, "OP_LEFT invalid number range")
+
+      true ->
+        <<sub::binary-size(len), _::binary>> = data
+        put_in(vm.stack, [sub | stack])
+    end
+  end
+
+  @doc """
+  Replaces the second-from-top stack element with its rightmost N bytes, where
+  N is the top element. Restored in the Chronicle upgrade (April 2026).
+  See bitcoin-sv src/script/interpreter.cpp:665-689.
+  """
+  @spec op_right(t()) :: t()
+  def op_right(%__MODULE__{stack: stack} = vm)
+    when length(stack) < 2,
+    do: err(vm, "OP_RIGHT invalid stack length")
+
+  def op_right(%__MODULE__{stack: [len_bin, data | stack]} = vm) do
+    len = ScriptNum.decode(len_bin)
+    size = byte_size(data)
+
+    cond do
+      len < 0 or len > size ->
+        err(vm, "OP_RIGHT invalid number range")
+
+      true ->
+        skip = size - len
+        <<_::binary-size(skip), sub::binary-size(len)>> = data
+        put_in(vm.stack, [sub | stack])
+    end
+  end
+
+  @doc """
   Converts the second from top stack item into a binary of the length given in
   the top stack item.
   """
@@ -765,16 +844,26 @@ defmodule BSV.VM do
   end
 
   @doc """
-  Multiplies the top stack element by 2. **DISABLED**
+  Multiplies the top stack element by 2. Restored in the Chronicle upgrade
+  (April 2026).
   """
   @spec op_2mul(t()) :: t()
-  def op_2mul(%__MODULE__{} = vm), do: err(vm, "OP_2MUL disabled")
+  def op_2mul(%__MODULE__{stack: []} = vm), do: err(vm, "OP_2MUL stack empty")
+  def op_2mul(%__MODULE__{stack: [top | stack]} = vm) do
+    val = ScriptNum.decode(top) * 2
+    put_in(vm.stack, [ScriptNum.encode(val) | stack])
+  end
 
   @doc """
-  Divides the top stack element by 2. **DISABLED**
+  Divides the top stack element by 2. Restored in the Chronicle upgrade
+  (April 2026).
   """
   @spec op_2div(t()) :: t()
-  def op_2div(%__MODULE__{} = vm), do: err(vm, "OP_2DIV disabled")
+  def op_2div(%__MODULE__{stack: []} = vm), do: err(vm, "OP_2DIV stack empty")
+  def op_2div(%__MODULE__{stack: [top | stack]} = vm) do
+    val = ScriptNum.decode(top) |> div(2)
+    put_in(vm.stack, [ScriptNum.encode(val) | stack])
+  end
 
   @doc """
   Negates the numeric value of the top stack element.
@@ -944,6 +1033,46 @@ defmodule BSV.VM do
             :binary.copy(<<0>>, diff * -1) <> res
         end
         put_in(vm.stack, [res | stack])
+    end
+  end
+
+  @doc """
+  Numerically left-shifts the second-from-top stack value by the top value
+  (bit count). Introduced in the Chronicle upgrade (April 2026).
+  See bitcoin-sv src/script/interpreter.cpp:690-725.
+  """
+  @spec op_lshiftnum(t()) :: t()
+  def op_lshiftnum(%__MODULE__{stack: stack} = vm)
+    when length(stack) < 2,
+    do: err(vm, "OP_LSHIFTNUM invalid stack length")
+
+  def op_lshiftnum(%__MODULE__{stack: [n_bin, val_bin | stack]} = vm) do
+    case ScriptNum.decode(n_bin) do
+      n when n < 0 ->
+        err(vm, "OP_LSHIFTNUM invalid number range")
+      n ->
+        val = ScriptNum.decode(val_bin) |> bsl(n)
+        put_in(vm.stack, [ScriptNum.encode(val) | stack])
+    end
+  end
+
+  @doc """
+  Numerically right-shifts the second-from-top stack value by the top value
+  (bit count). Introduced in the Chronicle upgrade (April 2026).
+  See bitcoin-sv src/script/interpreter.cpp:726-761.
+  """
+  @spec op_rshiftnum(t()) :: t()
+  def op_rshiftnum(%__MODULE__{stack: stack} = vm)
+    when length(stack) < 2,
+    do: err(vm, "OP_RSHIFTNUM invalid stack length")
+
+  def op_rshiftnum(%__MODULE__{stack: [n_bin, val_bin | stack]} = vm) do
+    case ScriptNum.decode(n_bin) do
+      n when n < 0 ->
+        err(vm, "OP_RSHIFTNUM invalid number range")
+      n ->
+        val = ScriptNum.decode(val_bin) |> bsr(n)
+        put_in(vm.stack, [ScriptNum.encode(val) | stack])
     end
   end
 

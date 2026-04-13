@@ -516,4 +516,65 @@ defmodule BSV.VMTest do
     end
   end
 
+  describe "Chronicle opcodes (April 2026)" do
+    test "OP_2MUL doubles the top element", %{vm: vm} do
+      assert {:ok, %VM{stack: [result]}} = VM.eval(vm, [:OP_7, :OP_2MUL])
+      assert BSV.ScriptNum.decode(result) == 14
+    end
+
+    test "OP_2DIV halves the top element (truncates toward zero)", %{vm: vm} do
+      assert {:ok, %VM{stack: [result]}} = VM.eval(vm, [:OP_7, :OP_2DIV])
+      assert BSV.ScriptNum.decode(result) == 3
+    end
+
+    test "OP_LEFT takes leftmost N bytes", %{vm: vm} do
+      assert {:ok, %VM{stack: ["he"]}} = VM.eval(vm, ["hello", :OP_2, :OP_LEFT])
+    end
+
+    test "OP_RIGHT takes rightmost N bytes", %{vm: vm} do
+      assert {:ok, %VM{stack: ["llo"]}} = VM.eval(vm, ["hello", :OP_3, :OP_RIGHT])
+    end
+
+    test "OP_SUBSTR extracts offset+len substring", %{vm: vm} do
+      assert {:ok, %VM{stack: ["ell"]}} = VM.eval(vm, ["hello", :OP_1, :OP_3, :OP_SUBSTR])
+    end
+
+    test "OP_LEFT errors when length is out of range", %{vm: vm} do
+      assert {:error, %VM{error: "OP_LEFT invalid number range"}} =
+        VM.eval(vm, ["hi", :OP_5, :OP_LEFT])
+    end
+
+    test "OP_LSHIFTNUM left-shifts the number by N bits", %{vm: vm} do
+      assert {:ok, %VM{stack: [result]}} = VM.eval(vm, [:OP_5, :OP_3, :OP_LSHIFTNUM])
+      assert BSV.ScriptNum.decode(result) == 40
+    end
+
+    test "OP_RSHIFTNUM right-shifts the number by N bits", %{vm: vm} do
+      assert {:ok, %VM{stack: [result]}} = VM.eval(vm, [:OP_16, :OP_2, :OP_RSHIFTNUM])
+      assert BSV.ScriptNum.decode(result) == 4
+    end
+
+    test "OP_VER pushes the tx version as 4-byte little-endian" do
+      tx = %BSV.Tx{version: 2}
+      txout = %BSV.TxOut{satoshis: 0, script: %BSV.Script{}}
+      vm = %VM{ctx: {tx, 0, txout}}
+      assert {:ok, %VM{stack: [<<2, 0, 0, 0>>]}} = VM.eval(vm, [:OP_VER])
+    end
+
+    test "OP_VER errors without a tx context", %{vm: vm} do
+      assert {:error, %VM{error: "OP_VER requires a transaction context"}} =
+        VM.eval(vm, [:OP_VER])
+    end
+
+    test "OP_VERIF behaves as OP_IF (post-Chronicle alias)", %{vm: vm} do
+      assert {:ok, %VM{stack: ["yes"]}} =
+        VM.eval(vm, [:OP_1, :OP_VERIF, "yes", :OP_ELSE, "no", :OP_ENDIF])
+    end
+
+    test "OP_VERNOTIF behaves as OP_NOTIF (post-Chronicle alias)", %{vm: vm} do
+      assert {:ok, %VM{stack: ["no"]}} =
+        VM.eval(vm, [:OP_1, :OP_VERNOTIF, "yes", :OP_ELSE, "no", :OP_ENDIF])
+    end
+  end
+
 end
