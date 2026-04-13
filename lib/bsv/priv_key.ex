@@ -7,6 +7,7 @@ defmodule BSV.PrivKey do
   which is a coordinate on the `secp256k1` curve.
   """
   import BSV.Util, only: [decode: 2, encode: 2]
+  alias Curvy.Curve
 
   defstruct d: nil, compressed: true
 
@@ -31,6 +32,8 @@ defmodule BSV.PrivKey do
     main: <<0x80>>,
     test: <<0xEF>>
   }
+
+  @curve_order Curve.secp256k1()[:n]
 
   @doc """
   Generates and returns a new `t:BSV.PrivKey.t/0`.
@@ -72,8 +75,10 @@ defmodule BSV.PrivKey do
     compressed = Keyword.get(opts, :compressed, true)
 
     case decode(privkey, encoding) do
-      {:ok, <<d::binary-32>>} ->
-        {:ok, struct(__MODULE__, d: d, compressed: compressed)}
+      {:ok, <<_::binary-32>> = decoded} ->
+        with :ok <- validate_scalar(decoded) do
+          {:ok, struct(__MODULE__, d: decoded, compressed: compressed)}
+        end
       {:ok, d} ->
         {:error, {:invalid_privkey, byte_size(d)}}
       {:error, error} ->
@@ -114,10 +119,14 @@ defmodule BSV.PrivKey do
 
     case B58.decode58_check(wif) do
       {:ok, {<<d::binary-32, 1>>, ^version_byte}} ->
-        {:ok, struct(__MODULE__, d: d, compressed: true)}
+        with :ok <- validate_scalar(d) do
+          {:ok, struct(__MODULE__, d: d, compressed: true)}
+        end
 
       {:ok, {<<d::binary-32>>, ^version_byte}} ->
-        {:ok, struct(__MODULE__, d: d, compressed: false)}
+        with :ok <- validate_scalar(d) do
+          {:ok, struct(__MODULE__, d: d, compressed: false)}
+        end
 
       {:ok, {<<d::binary>>, version_byte}} when byte_size(d) in [32,33] ->
         {:error, {:invalid_base58_check, version_byte, BSV.network()}}
@@ -179,6 +188,16 @@ defmodule BSV.PrivKey do
     end
 
     B58.encode58_check!(privkey_with_suffix, version_byte)
+  end
+
+  defp validate_scalar(<<_::binary-size(32)>> = d) do
+    scalar = :binary.decode_unsigned(d)
+
+    cond do
+      scalar == 0 -> {:error, :invalid_privkey_scalar}
+      scalar >= @curve_order -> {:error, :invalid_privkey_scalar}
+      true -> :ok
+    end
   end
 
 end

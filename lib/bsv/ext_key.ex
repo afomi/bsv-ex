@@ -386,7 +386,7 @@ defmodule BSV.ExtKey do
     do: derive_pathlist(to_public(key), {:public, pathlist})
 
   defp derive_pathlist(%{privkey: nil}, {:private, _pathlist}),
-    do: raise ArgumentError, "Cannot derive private child from public parent"
+    do: raise(ArgumentError, "Cannot derive private child from public parent")
 
   defp derive_pathlist(key, {kind, [index | rest]}) do
     with {privkey, pubkey, child_chain} <- derive_key(key, index) do
@@ -419,7 +419,7 @@ defmodule BSV.ExtKey do
   end
 
   defp derive_key(%{privkey: nil}, index) when hardened?(index),
-    do: raise ArgumentError, "Cannot derive hardened public child"
+    do: raise(ArgumentError, "Cannot derive hardened public child")
 
   # Derives a key pair
   defp derive_keypair(

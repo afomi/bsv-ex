@@ -5,7 +5,7 @@ defmodule BSV.MixProject do
     [
       app: :bsv,
       version: "2.1.0",
-      elixir: "~> 1.11",
+      elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       name: "BSV",
@@ -26,10 +26,10 @@ defmodule BSV.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:basefiftyeight, "~> 0.1"},
-      {:curvy, "~> 0.3"},
-      {:ex_doc, "~> 0.25", only: :dev, runtime: false},
-      {:jason, "~> 1.2", only: :test, runtime: false}
+      {:basefiftyeight, git: "https://github.com/afomi/b58.git"},
+      {:curvy, "~> 0.3.1"},
+      {:ex_doc, "~> 0.40", only: :dev, runtime: false},
+      {:jason, "~> 1.4", only: :test, runtime: false}
     ]
   end
 

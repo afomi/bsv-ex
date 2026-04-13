@@ -28,6 +28,9 @@ defmodule BSV.DecodeError do
   def message(%__MODULE__{reason: {:invalid_privkey, length}}),
     do: "Invalid PrivKey length: #{ to_string(length) }"
 
+  def message(%__MODULE__{reason: :invalid_privkey_scalar}),
+    do: "Invalid PrivKey scalar"
+
   def message(%__MODULE__{reason: {:invalid_pubkey, length}}),
     do: "Invalid PubKey length: #{ to_string(length) }"
 

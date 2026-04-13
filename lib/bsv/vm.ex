@@ -16,7 +16,7 @@ defmodule BSV.VM do
   value on the top of the stack, it is a valid script. Otherwise it is invalid.
   This is known as a predicate - an equation that evaluates to true or false.
   """
-  use Bitwise
+  import Bitwise
   alias BSV.{PubKey, Script, ScriptNum, Sig, Tx, TxOut, Util}
 
   @default_opts %{}
@@ -662,7 +662,7 @@ defmodule BSV.VM do
     and byte_size(a) == byte_size(b)
   do
     val = [:binary.bin_to_list(b), :binary.bin_to_list(a)]
-    |> List.zip()
+    |> Enum.zip()
     |> Enum.map(fn {b, a} -> b &&& a end)
     |> :binary.list_to_bin()
     put_in(vm.stack, [val | stack])
@@ -685,7 +685,7 @@ defmodule BSV.VM do
     and byte_size(a) == byte_size(b)
   do
     val = [:binary.bin_to_list(b), :binary.bin_to_list(a)]
-    |> List.zip()
+    |> Enum.zip()
     |> Enum.map(fn {b, a} -> b ||| a end)
     |> :binary.list_to_bin()
     put_in(vm.stack, [val | stack])
@@ -708,7 +708,7 @@ defmodule BSV.VM do
     and byte_size(a) == byte_size(b)
   do
     val = [:binary.bin_to_list(b), :binary.bin_to_list(a)]
-    |> List.zip()
+    |> Enum.zip()
     |> Enum.map(fn {b, a} -> bxor(b, a) end)
     |> :binary.list_to_bin()
     put_in(vm.stack, [val | stack])

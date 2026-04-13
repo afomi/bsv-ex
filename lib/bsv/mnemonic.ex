@@ -20,10 +20,10 @@ defmodule BSV.Mnemonic do
   @typedoc "Mnemomic seed"
   @type seed() :: <<_::512>>
 
-  @lang Application.get_env(:bsv, :lang, "en")
+  @lang Application.compile_env(:bsv, :lang, "en")
 
   @wordlist :code.priv_dir(:bsv)
-            |> Path.join("bip39/#{ @lang }.txt")
+            |> Path.join("bip39/#{@lang}.txt")
             |> File.stream!()
             |> Stream.map(&String.trim/1)
             |> Enum.to_list()

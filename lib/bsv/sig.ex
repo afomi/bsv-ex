@@ -19,7 +19,7 @@ defmodule BSV.Sig do
   algorithm and then used to calculate the ECDSA signature. The resulting
   DER-encoded signature is appended with the sighash flag.
   """
-  use Bitwise
+  import Bitwise
   alias BSV.{Hash, OutPoint, PrivKey, PubKey, Script, Tx, TxIn, TxOut, VarInt}
 
   @typedoc "Sighash preimage"
@@ -252,7 +252,7 @@ defmodule BSV.Sig do
   defp update_tx_outputs(outputs, vin, sighash_type)
     when sighash_single?(sighash_type)
     and length(outputs) <= vin,
-    do: raise ArgumentError, "input out of txout range"
+    do: raise(ArgumentError, "input out of txout range")
 
   defp update_tx_outputs(outputs, vin, sighash_type)
     when sighash_single?(sighash_type)

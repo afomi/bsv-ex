@@ -1,6 +1,8 @@
 defmodule BSV.PrivKeyTest do
   use ExUnit.Case, async: true
   alias BSV.PrivKey
+  alias B58
+  alias Curvy.Curve
 
   @privkey_bin <<60, 255, 4, 99, 48, 136, 98, 46, 69, 153, 220, 46, 191, 132, 63,
     130, 206, 243, 70, 59, 145, 13, 52, 167, 82, 161, 54, 34, 171, 174, 55, 155>>
@@ -37,6 +39,19 @@ defmodule BSV.PrivKeyTest do
     test "returns error with invalid binary" do
       assert {:error, _error} = PrivKey.from_binary("notaprivkey")
     end
+
+    test "rejects zero scalar" do
+      zero = :binary.copy(<<0>>, 32)
+      assert {:error, :invalid_privkey_scalar} = PrivKey.from_binary(zero)
+    end
+
+    test "rejects scalar greater than or equal to curve order" do
+      order = Curve.secp256k1()[:n]
+      order_bin = :binary.encode_unsigned(order)
+      padded = :binary.copy(<<0>>, 32 - byte_size(order_bin)) <> order_bin
+
+      assert {:error, :invalid_privkey_scalar} = PrivKey.from_binary(padded)
+    end
   end
 
   describe "PrivKey.from_binary!/2" do
@@ -53,6 +68,24 @@ defmodule BSV.PrivKeyTest do
     test "raises error with invalid binary" do
       assert_raise BSV.DecodeError, ~r/invalid privkey/i, fn ->
         PrivKey.from_binary!("notaprivkey")
+      end
+    end
+
+    test "raises error when scalar is zero" do
+      zero = :binary.copy(<<0>>, 32)
+
+      assert_raise BSV.DecodeError, ~r/invalid privkey scalar/i, fn ->
+        PrivKey.from_binary!(zero)
+      end
+    end
+
+    test "raises error when scalar is equal to curve order" do
+      order = Curve.secp256k1()[:n]
+      order_bin = :binary.encode_unsigned(order)
+      padded = :binary.copy(<<0>>, 32 - byte_size(order_bin)) <> order_bin
+
+      assert_raise BSV.DecodeError, ~r/invalid privkey scalar/i, fn ->
+        PrivKey.from_binary!(padded)
       end
     end
   end
@@ -73,6 +106,14 @@ defmodule BSV.PrivKeyTest do
     test "returns error with invalid wif" do
       assert {:error, _error} = PrivKey.from_wif("notawif")
     end
+
+    test "returns error when wif decodes to invalid scalar" do
+      zero = :binary.copy(<<0>>, 32)
+      version_byte = <<0x80>>
+      wif = B58.encode58_check!(<<zero::binary, 0x01>>, version_byte)
+
+      assert {:error, :invalid_privkey_scalar} = PrivKey.from_wif(wif)
+    end
   end
 
   describe "PrivKey.from_wif!/1" do
@@ -91,6 +132,16 @@ defmodule BSV.PrivKeyTest do
     test "raises error with invalid wif" do
       assert_raise BSV.DecodeError, ~r/invalid wif/i, fn ->
         PrivKey.from_wif!("notawif")
+      end
+    end
+
+    test "raises error when wif decodes to invalid scalar" do
+      zero = :binary.copy(<<0>>, 32)
+      version_byte = <<0x80>>
+      wif = B58.encode58_check!(<<zero::binary, 0x01>>, version_byte)
+
+      assert_raise BSV.DecodeError, ~r/invalid privkey scalar/i, fn ->
+        PrivKey.from_wif!(wif)
       end
     end
   end

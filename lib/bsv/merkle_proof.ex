@@ -12,7 +12,7 @@ defmodule BSV.MerkleProof do
   in a binary or json format, so network participants can share the proofs in
   a standardised format.
   """
-  use Bitwise
+  import Bitwise
   alias BSV.{BlockHeader, Hash, Serializable, Tx, VarInt}
   import BSV.Util, only: [decode: 2, encode: 2]
 

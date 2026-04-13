@@ -5,7 +5,7 @@ defmodule BSV.ScriptNum do
 
   Used in Bitcoin Script for arithmetic operations.
   """
-  use Bitwise
+  import Bitwise
   import BSV.Util, only: [reverse_bin: 1]
 
   @typedoc "ScriptNum binary"

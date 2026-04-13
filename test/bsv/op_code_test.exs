@@ -13,6 +13,7 @@ defmodule BSV.OpCodeTest do
     test "converts integers to atoms" do
       assert OpCode.to_atom(0) == :OP_FALSE
       assert OpCode.to_atom(1) == :OP_PUSHBYTES_1
+      assert OpCode.to_atom(75) == :OP_PUSHBYTES_75
       assert OpCode.to_atom(96) == :OP_16
       assert OpCode.to_atom(97) == :OP_NOP
     end
@@ -33,6 +34,7 @@ defmodule BSV.OpCodeTest do
   describe "OpCode.to_integer/1" do
     test "converts integers to atoms" do
       assert OpCode.to_integer(:OP_0) == 0
+      assert OpCode.to_integer(:OP_PUSHBYTES_1) == 1
       assert OpCode.to_integer(:OP_16) == 96
       assert OpCode.to_integer(:OP_NOP) == 97
     end
