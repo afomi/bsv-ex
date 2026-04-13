@@ -16,9 +16,7 @@ defmodule BSV.OpCode do
   """
   @type t() :: atom() | integer()
 
-  @push_data_pairs Enum.map(1..75, fn n -> {:"OP_PUSHBYTES_#{n}", n} end)
-
-  @op_code_pairs @push_data_pairs ++ [
+  @op_code_pairs [
     {:OP_FALSE, 0},
     {:OP_0, 0},
 

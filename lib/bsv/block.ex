@@ -39,7 +39,7 @@ defmodule BSV.Block do
   defp hash_nodes([hash]), do: hash
 
   defp hash_nodes(nodes) when rem(length(nodes), 2) == 1,
-    do: hash_nodes(nodes ++ List.last(nodes))
+    do: hash_nodes(nodes ++ [List.last(nodes)])
 
   defp hash_nodes(nodes) do
     nodes

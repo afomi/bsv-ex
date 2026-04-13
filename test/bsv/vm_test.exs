@@ -499,4 +499,21 @@ defmodule BSV.VMTest do
     end
   end
 
+  describe "CLTV/CSV behave as NOPs on BSV (post-Genesis)" do
+    # Per bitcoin-sv src/script/interpreter.cpp:517-567, both opcodes short-circuit
+    # to a no-op when utxo_after_genesis is true. Genesis activated Feb 2020.
+    test "OP_CHECKLOCKTIMEVERIFY does not crash and leaves stack untouched", %{vm: vm} do
+      assert {:ok, %VM{stack: [<<1>>]}} = VM.eval(vm, [:OP_1, :OP_CHECKLOCKTIMEVERIFY])
+    end
+
+    test "OP_CHECKSEQUENCEVERIFY does not crash and leaves stack untouched", %{vm: vm} do
+      assert {:ok, %VM{stack: [<<1>>]}} = VM.eval(vm, [:OP_1, :OP_CHECKSEQUENCEVERIFY])
+    end
+
+    test "a script parsed from raw 0xb1 byte evaluates without crashing", %{vm: vm} do
+      {:ok, script} = BSV.Script.from_binary(<<0x51, 0xb1>>)
+      assert {:ok, %VM{stack: [<<1>>]}} = VM.eval(vm, script)
+    end
+  end
+
 end

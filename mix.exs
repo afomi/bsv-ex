@@ -26,7 +26,7 @@ defmodule BSV.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:basefiftyeight, git: "https://github.com/afomi/b58.git"},
+      {:basefiftyeight, git: "https://github.com/afomi/b58.git", ref: "92a6a3dc961b9572f810f4a0e94861772f2eade8"},
       {:curvy, "~> 0.3.1"},
       {:ex_doc, "~> 0.40", only: :dev, runtime: false},
       {:jason, "~> 1.4", only: :test, runtime: false}

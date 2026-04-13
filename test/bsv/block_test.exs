@@ -95,6 +95,31 @@ defmodule BSV.BlockTest do
     end
   end
 
+  describe "Block.calc_merkle_root/1 with odd-count levels" do
+    # Regression guard for lib/bsv/block.ex hash_nodes/1 odd-length branch.
+    # The BSV/Bitcoin merkle spec duplicates the last hash when a level has an
+    # odd number of nodes. The current implementation uses
+    # `nodes ++ List.last(nodes)` which concatenates a binary onto a list via
+    # `++` — that produces an improper list and a protocol/arg error, rather
+    # than `nodes ++ [List.last(nodes)]`.
+    test "handles a block with 3 transactions (odd level triggers duplication)" do
+      tx_a = %BSV.Tx{lock_time: 1}
+      tx_b = %BSV.Tx{lock_time: 2}
+      tx_c = %BSV.Tx{lock_time: 3}
+      block = %Block{header: %BSV.BlockHeader{}, txns: [tx_a, tx_b, tx_c]}
+
+      h_a = BSV.Tx.get_hash(tx_a)
+      h_b = BSV.Tx.get_hash(tx_b)
+      h_c = BSV.Tx.get_hash(tx_c)
+
+      ab = BSV.Hash.sha256_sha256(h_a <> h_b)
+      cc = BSV.Hash.sha256_sha256(h_c <> h_c)
+      expected = BSV.Hash.sha256_sha256(ab <> cc)
+
+      assert Block.calc_merkle_root(block) == expected
+    end
+  end
+
   describe "Block.validate_merkle_root/1" do
     test "validates the merkle root of the block" do
       assert Block.validate_merkle_root(@block)

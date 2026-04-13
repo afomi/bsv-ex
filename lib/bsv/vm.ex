@@ -197,6 +197,8 @@ defmodule BSV.VM do
       :OP_CHECKSIGVERIFY -> op_checksigverify(vm)
       :OP_CHECKMULTISIG -> op_checkmultisig(vm)
       :OP_CHECKMULTISIGVERIFY -> op_checkmultisigverify(vm)
+      :OP_CHECKLOCKTIMEVERIFY -> op_nop(vm)
+      :OP_CHECKSEQUENCEVERIFY -> op_nop(vm)
 
       # Nops and reserved words
       :OP_NOP1 -> op_nop(vm)

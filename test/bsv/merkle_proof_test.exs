@@ -53,8 +53,66 @@ defmodule BSV.MerkleProofTest do
     test "serialises the proof as hex string" do
       assert MerkleProof.to_binary(@merkle_proof, encoding: :hex) == @merkle_proof_hex
     end
+
+    test "round-trips a proof whose subject is a full Tx (flag bit 0 set)" do
+      tx =
+        BSV.Tx.from_binary!(
+          "010000000160f61507c2560a0246b53b96e9a8d28f66d82a8b028204b820de6d10c608d8ad030000006a473044022031a761006d72db7a088a4336c50ea4ca5a8aa76cf355e9ae3866ed3994d0748802205abaa90be33ef7211575b933c0f0a688c3ae175ab55cd8e75f0e07364e4e76d6412103d878146ae9f687c95ac05395db7dfdf2698bdc246158f8672257aab631e4c65cffffffff0123020000000000001976a9142eab375745d7799792b5c5f8b5a9406b8ad55bcc88ac00000000",
+          encoding: :hex
+        )
+
+      proof = %MerkleProof{
+        flags: 1,
+        index: 0,
+        subject: tx,
+        target:
+          <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0>>,
+        nodes: [
+          :binary.copy(<<1>>, 32),
+          "*",
+          :binary.copy(<<2>>, 32)
+        ]
+      }
+
+      assert {:ok, ^proof} = proof |> MerkleProof.to_binary() |> MerkleProof.from_binary()
+    end
   end
 
+  describe "MerkleProof.calc_merkle_root/1 edge cases" do
+    test "handles the '*' duplicate-node marker at an even index" do
+      tx_hash = :binary.copy(<<0xAA>>, 32)
+      sibling = :binary.copy(<<0xBB>>, 32)
 
+      proof = %MerkleProof{index: 0, subject: tx_hash, nodes: ["*", sibling]}
 
+      expected =
+        BSV.Hash.sha256_sha256(
+          BSV.Hash.sha256_sha256(tx_hash <> tx_hash) <> sibling
+        )
+
+      assert MerkleProof.calc_merkle_root(proof) == expected
+    end
+
+    test "raises when '*' appears at an odd index (invalid proof shape)" do
+      proof = %MerkleProof{
+        index: 1,
+        subject: :binary.copy(<<0xAA>>, 32),
+        nodes: ["*"]
+      }
+
+      assert_raise RuntimeError, ~r/invalid nodes/, fn ->
+        MerkleProof.calc_merkle_root(proof)
+      end
+    end
+
+    test "calc_merkle_root/1 accepts a full Tx as the subject" do
+      tx = %BSV.Tx{}
+      sibling = :binary.copy(<<0xCC>>, 32)
+      proof = %MerkleProof{index: 0, subject: tx, nodes: [sibling]}
+
+      expected = BSV.Hash.sha256_sha256(BSV.Tx.get_hash(tx) <> sibling)
+      assert MerkleProof.calc_merkle_root(proof) == expected
+    end
+  end
 end

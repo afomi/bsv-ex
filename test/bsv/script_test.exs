@@ -44,6 +44,12 @@ defmodule BSV.ScriptTest do
       assert [:OP_FALSE, :OP_RETURN, "UNIV" | _rest] = chunks
       assert length(chunks) == 7
     end
+
+    test "rejects a truncated push (lone length byte with no payload)" do
+      # Bytes 0x01..0x4b are push-length prefixes, not opcodes. A lone 0x01 with
+      # no following byte is a malformed script, not a valid [:OP_PUSHBYTES_1].
+      assert_raise BSV.DecodeError, fn -> Script.from_binary!(<<1>>) end
+    end
   end
 
   describe "Script.push/2" do
