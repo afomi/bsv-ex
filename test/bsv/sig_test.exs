@@ -30,6 +30,24 @@ defmodule BSV.SigTest do
 
   doctest Sig
 
+  describe "sighash_chronicle? guard" do
+    test "returns the Chronicle sighash flag" do
+      assert Sig.sighash_flag(:sighash_chronicle) == 0x20
+    end
+
+    test "detects the Chronicle bit" do
+      assert Sig.sighash_chronicle?(0x20)
+    end
+
+    test "does not confuse the ForkID bit with Chronicle" do
+      refute Sig.sighash_chronicle?(0x40)
+    end
+
+    test "detects Chronicle when combined with ForkID" do
+      assert Sig.sighash_chronicle?(0x60)
+    end
+  end
+
   describe "Sig.sighash/4" do
     test "must return the correct sighash" do
       sighash = Sig.sighash(@test_tx, 0, @prev_txout, 65)

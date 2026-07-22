@@ -8,6 +8,9 @@ defmodule BSV.ScriptNum do
   import Bitwise
   import BSV.Util, only: [reverse_bin: 1]
 
+  # Chronicle raises the consensus limit for ScriptNum operands to 32 MB.
+  # This codec does not enforce consensus-era or policy limits.
+
   @typedoc "ScriptNum binary"
   @type t() :: binary()
 

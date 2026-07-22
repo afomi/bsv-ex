@@ -41,6 +41,7 @@ defmodule BSV.Sig do
   @sighash_all 0x01
   @sighash_none 0x02
   @sighash_single 0x03
+  @sighash_chronicle 0x20
   @sighash_forkid 0x40
   @sighash_anyonecanpay 0x80
 
@@ -54,6 +55,9 @@ defmodule BSV.Sig do
 
   defguard sighash_single?(sighash_flag)
     when (sighash_flag &&& 31) == @sighash_single
+
+  defguard sighash_chronicle?(sighash_flag)
+    when (sighash_flag &&& @sighash_chronicle) != 0
 
   defguard sighash_forkid?(sighash_flag)
     when (sighash_flag &&& @sighash_forkid) != 0
@@ -75,6 +79,7 @@ defmodule BSV.Sig do
   def sighash_flag(:sighash_all), do: @sighash_all
   def sighash_flag(:sighash_none), do: @sighash_none
   def sighash_flag(:sighash_single), do: @sighash_single
+  def sighash_flag(:sighash_chronicle), do: @sighash_chronicle
   def sighash_flag(:sighash_forkid), do: @sighash_forkid
   def sighash_flag(:sighash_anyonecanpay), do: @sighash_anyonecanpay
 
