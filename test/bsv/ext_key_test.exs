@@ -1,5 +1,6 @@
 defmodule BSV.ExtKeyTest do
-  use ExUnit.Case, async: true
+  # Testnet cases temporarily mutate the application-wide BSV network.
+  use ExUnit.Case, async: false
   alias BSV.ExtKey
   alias BSV.Mnemonic
 
