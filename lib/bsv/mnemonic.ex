@@ -9,7 +9,7 @@ defmodule BSV.Mnemonic do
   This module implemented [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki).
   """
   alias BSV.Hash
-  import BSV.Util, only: [encode: 2, rand_bytes: 1]
+  import BSV.Util, only: [encode: 2, rand_bytes: 2]
 
   @typedoc "Mnemonic phrase"
   @type t() :: String.t()
@@ -35,12 +35,14 @@ defmodule BSV.Mnemonic do
   @doc """
   Generates and returns a new random `t:BSV.Mnemonic.t/0` of the specified
   `t:BSV.Mnemonic.entropy_length/0`.
+
+  An entropy provider can be selected with the `:entropy_provider` option.
   """
-  @spec new(entropy_length()) :: t()
-  def new(entropy_bits \\ 128) when entropy_bits in @allowed_lengths do
+  @spec new(entropy_length(), BSV.Entropy.options()) :: t()
+  def new(entropy_bits \\ 128, opts \\ []) when entropy_bits in @allowed_lengths do
     entropy_bits
     |> div(8)
-    |> rand_bytes()
+    |> rand_bytes(opts)
     |> from_entropy()
   end
 

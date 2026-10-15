@@ -89,9 +89,11 @@ defmodule BSV.ExtKey do
 
   @doc """
   Generates and returns a new random `t:BSV.ExtKey.t/0`.
+
+  An entropy provider can be selected with the `:entropy_provider` option.
   """
-  @spec new() :: t()
-  def new(), do: from_seed!(:crypto.strong_rand_bytes(64))
+  @spec new(BSV.Entropy.options()) :: t()
+  def new(opts \\ []), do: from_seed!(BSV.Entropy.bytes!(64, opts))
 
   @doc """
   Generates and returns a new `t:BSV.ExtKey.t/0` from the given binary seed.

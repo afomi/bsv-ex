@@ -15,12 +15,14 @@ defmodule BSV.KeyPair do
 
   @doc """
   Generates and returns a new `t:BSV.KeyPair.t/0`.
+
+  Options are passed to `BSV.PrivKey.new/1`, including `:compressed` and
+  `:entropy_provider`.
   """
   @spec new(keyword()) :: t()
   def new(opts \\ []) do
-    {_pubkey, privkey} = :crypto.generate_key(:ecdh, :secp256k1)
-    privkey
-    |> PrivKey.from_binary!(opts)
+    opts
+    |> PrivKey.new()
     |> from_privkey()
   end
 

@@ -68,9 +68,9 @@ defmodule BSV.Util do
   @doc """
   Returns a binary containing the specified number of random bytes.
   """
-  @spec rand_bytes(integer()) :: binary()
-  def rand_bytes(bytes) when is_integer(bytes),
-    do: :crypto.strong_rand_bytes(bytes)
+  @spec rand_bytes(non_neg_integer(), BSV.Entropy.options()) :: binary()
+  def rand_bytes(bytes, opts \\ []) when is_integer(bytes) and bytes >= 0,
+    do: BSV.Entropy.bytes!(bytes, opts)
 
   @doc """
   Reverses the bytes of the given binary data.

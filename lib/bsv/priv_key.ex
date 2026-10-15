@@ -43,10 +43,11 @@ defmodule BSV.PrivKey do
   The accepted options are:
 
   * `:compressed` - Denotes whether the correspding `t:BSV.PubKey.t/0` is compressed on not. Defaults `true`.
+  * `:entropy_provider` - Module implementing the `BSV.Entropy` behaviour. Defaults to `BSV.Entropy.OTP`.
   """
   @spec new(keyword()) :: t()
   def new(opts \\ []) do
-    {_pubkey, privkey} = :crypto.generate_key(:ecdh, :secp256k1)
+    privkey = BSV.Entropy.secp256k1_scalar!(:private_key, opts)
     from_binary!(privkey, opts)
   end
 

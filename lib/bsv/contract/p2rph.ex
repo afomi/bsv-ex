@@ -78,12 +78,11 @@ defmodule BSV.Contract.P2RPH do
 
   @doc """
   Generates a new random K value binary.
+
+  An entropy provider can be selected with the `:entropy_provider` option.
   """
-  @spec generate_k() :: binary()
-  def generate_k() do
-    :crypto.generate_key(:ecdh, :secp256k1)
-    |> elem(1)
-  end
+  @spec generate_k(BSV.Entropy.options()) :: binary()
+  def generate_k(opts \\ []), do: BSV.Entropy.secp256k1_scalar!(:signing_nonce, opts)
 
   @doc """
   Returns the corresponding R value of the given K value.
