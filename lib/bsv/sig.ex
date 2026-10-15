@@ -15,6 +15,9 @@ defmodule BSV.Sig do
   | `SIGHASH_NONE | ANYONECANPAY`   | `0xC2` / `1100 0010`      | `0x82` / `1000 0010`         | Sign single input and no outputs    |
   | `SIGHASH_SINGLE | ANYONECANPAY` | `0xC3` / `1100 0011`      | `0x83` / `1000 0011`         | Sign single input and single output |
 
+  The Chronicle bit (`0x20`) can be combined with these modes. When present it
+  selects OTDA and takes precedence over the ForkID bit (`0x40`).
+
   Once the preimage is constructed, it is double hashed using the `SHA-256`
   algorithm and then used to calculate the ECDSA signature. The resulting
   DER-encoded signature is appended with the sighash flag.
@@ -46,6 +49,7 @@ defmodule BSV.Sig do
   @sighash_anyonecanpay 0x80
 
   @default_sighash @sighash_all ||| @sighash_forkid
+  @sighash_one <<1, 0::size(248)>>
 
   defguard sighash_all?(sighash_flag)
     when (sighash_flag &&& 31) == @sighash_all
@@ -64,6 +68,10 @@ defmodule BSV.Sig do
 
   defguard sighash_anyone_can_pay?(sighash_flag)
     when (sighash_flag &&& @sighash_anyonecanpay) != 0
+
+  defguardp uses_otda?(sighash_flag)
+    when (sighash_flag &&& @sighash_chronicle) != 0
+    or (sighash_flag &&& @sighash_forkid) == 0
 
   @doc """
   Returns the `t:BSV.Sig.sighash_flag/0` of the given sighash type.
@@ -88,11 +96,16 @@ defmodule BSV.Sig do
   `t:BSV.TxIn.vin/0` of the context input, the `t:BSV.TxOut.t/0` that is being
   spent, and the `t:BSV.Sig.sighash_flag/0`.
 
-  BSV transactions require the `SIGHASH_FORKID` flag which results in a preimage
-  according the algorithm proposed in [BIP-143](https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki).
-  The legacy preimage algorithm is supported by this library.
+  `SIGHASH_CHRONICLE` selects the Original Transaction Digest Algorithm (OTDA).
+  Otherwise, `SIGHASH_FORKID` selects the algorithm proposed in
+  [BIP-143](https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki).
+  Sighash types containing neither bit also use the original algorithm.
   """
   @spec preimage(Tx.t(), TxIn.vin(), TxOut.t(), sighash_flag()) :: preimage()
+  def preimage(%Tx{} = tx, vin, %TxOut{} = txout, sighash_type)
+    when sighash_chronicle?(sighash_type),
+    do: otda_preimage(tx, vin, txout, sighash_type)
+
   def preimage(%Tx{inputs: inputs} = tx, vin, %TxOut{} = txout, sighash_type)
     when sighash_forkid?(sighash_type)
   do
@@ -127,7 +140,30 @@ defmodule BSV.Sig do
     >>
   end
 
-  def preimage(%Tx{} = tx, vin, %TxOut{} = txout, sighash_type) do
+  def preimage(%Tx{} = tx, vin, %TxOut{} = txout, sighash_type),
+    do: otda_preimage(tx, vin, txout, sighash_type)
+
+  @doc """
+  Returns an Original Transaction Digest Algorithm (OTDA) preimage.
+
+  OTDA serializes a modified copy of the complete transaction. All input
+  scripts are cleared except the script for the input being signed, and the
+  outputs and sequences are modified according to the base sighash mode.
+
+  Invalid input indexes and `SIGHASH_SINGLE` without a corresponding output do
+  not have a preimage. `sighash/4` returns Bitcoin's historical hash-one result
+  for those cases.
+  """
+  @spec otda_preimage(Tx.t(), TxIn.vin(), TxOut.t(), sighash_flag()) :: preimage()
+  def otda_preimage(%Tx{inputs: inputs}, vin, %TxOut{}, _sighash_type)
+    when vin < 0 or vin >= length(inputs),
+    do: raise(ArgumentError, "input index out of range")
+
+  def otda_preimage(%Tx{outputs: outputs}, vin, %TxOut{}, sighash_type)
+    when sighash_single?(sighash_type) and vin >= length(outputs),
+    do: raise(ArgumentError, "input index has no corresponding output")
+
+  def otda_preimage(%Tx{} = tx, vin, %TxOut{} = txout, sighash_type) do
     %{script: subscript} = update_in(txout.script.chunks, fn chunks ->
       Enum.reject(chunks, & &1 == :OP_CODESEPARATOR)
     end)
@@ -144,7 +180,23 @@ defmodule BSV.Sig do
   that is being spent, and the `t:BSV.Sig.sighash_flag/0`.
   """
   @spec sighash(Tx.t(), TxIn.vin(), TxOut.t(), sighash_flag()) :: sighash()
-  def sighash(%Tx{} = tx, vin, %TxOut{} = txout, sighash_type \\ @default_sighash) do
+  def sighash(tx, vin, txout, sighash_type \\ @default_sighash)
+
+  def sighash(
+    %Tx{inputs: inputs, outputs: outputs},
+    vin,
+    %TxOut{},
+    sighash_type
+  )
+    when uses_otda?(sighash_type)
+    and (
+      vin < 0
+      or vin >= length(inputs)
+      or (sighash_single?(sighash_type) and vin >= length(outputs))
+    ),
+    do: @sighash_one
+
+  def sighash(%Tx{} = tx, vin, %TxOut{} = txout, sighash_type) do
     tx
     |> preimage(vin, txout, sighash_type)
     |> Hash.sha256_sha256()
