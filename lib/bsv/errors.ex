@@ -10,8 +10,10 @@ defmodule BSV.DecodeError do
   def message(%__MODULE__{reason: :invalid_address}),
     do: "Invalid Address"
 
+  # The version byte is raw (e.g. <<0x80>>, not valid UTF-8), so show it as hex;
+  # interpolating it as-is made the message unprintable by Logger.
   def message(%__MODULE__{reason: {:invalid_base58_check, version_byte, network}}),
-    do: "Invalid version byte `#{ to_string(version_byte) }` for network: #{ to_string(network) }"
+    do: "Invalid version byte `0x#{ Base.encode16(version_byte, case: :lower) }` for network: #{ to_string(network) }"
 
   def message(%__MODULE__{reason: {:invalid_encoding, encoding}}),
     do: "Error decoding `#{ to_string(encoding) }` data"
