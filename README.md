@@ -20,6 +20,10 @@ Currently supported features:
 - Merkle proof parsing, serialization and verification
 - Bitcoin Signed Messages and ECIES encryption (Electrum compatible)
 
+See [`bsv-ex` as a foundation for an Elixir BSV stack](docs/ts-stack-foundation-assessment.md)
+for an assessment of the low-level building blocks needed by future BRC-100
+wallet and broader `ts-stack`-style Elixir libraries.
+
 ## Installation
 
 The package can be installed by adding `bsv` to your list of dependencies in `mix.exs`:
