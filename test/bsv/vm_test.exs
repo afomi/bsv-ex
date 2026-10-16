@@ -561,6 +561,11 @@ defmodule BSV.VMTest do
       assert BSV.ScriptNum.decode(result) == 4
     end
 
+    test "OP_RSHIFTNUM rounds negative numbers toward zero", %{vm: vm} do
+      assert {:ok, %VM{stack: [result]}} = VM.eval(vm, [ScriptNum.encode(-5), :OP_1, :OP_RSHIFTNUM])
+      assert ScriptNum.decode(result) == -2
+    end
+
     test "OP_VER pushes the tx version as 4-byte little-endian" do
       tx = %BSV.Tx{version: 2}
       txout = %BSV.TxOut{satoshis: 0, script: %BSV.Script{}}

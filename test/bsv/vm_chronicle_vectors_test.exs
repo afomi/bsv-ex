@@ -5,6 +5,7 @@ defmodule BSV.VMChronicleVectorsTest do
   # Vectors are extracted from the Bitcoin SV node unit tests. Each fixture
   # names the node version and source file it was taken from.
   @verif File.read!("test/vectors/chronicle.verif.json") |> Jason.decode!()
+  @shiftnum File.read!("test/vectors/chronicle.shiftnum.json") |> Jason.decode!()
 
   defp eval(script_hex, tx_version) do
     script = Script.from_binary!(script_hex, encoding: :hex)
@@ -33,6 +34,22 @@ defmodule BSV.VMChronicleVectorsTest do
           assert vm.if_stack == [], label
           assert length(vm.stack) == v["stack_size"], label
           assert stack_top_hex(vm) == v["stack_top"], label
+        end
+      end
+    end
+  end
+
+  describe "OP_LSHIFTNUM and OP_RSHIFTNUM node vectors" do
+    test "shift numerically, rounding right shifts toward zero" do
+      for v <- @shiftnum["vectors"] do
+        result = eval(v["script"], 2)
+        label = "#{v["case"]} #{v["script"]}"
+
+        if v["error"] do
+          assert {:error, _vm} = result, label
+        else
+          assert {:ok, vm} = result, label
+          assert vm.stack |> Enum.reverse() |> Enum.map(&Base.encode16(&1, case: :lower)) == v["stack"], label
         end
       end
     end

@@ -1,0 +1,231 @@
+{
+  "source": "bitcoin-sv v1.2.1 (90a1a00e6): src/test/lrshiftnum_tests.cpp",
+  "notes": [
+    "Post-Chronicle rows only (SCRIPT_UTXO_AFTER_GENESIS | SCRIPT_UTXO_AFTER_CHRONICLE).",
+    "script is raw script hex; stack is bottom-to-top hex; error is the node ScriptError or null."
+  ],
+  "vectors": [
+    {
+      "case": "eval_script_op_lshiftnum",
+      "script": "b6",
+      "error": "SCRIPT_ERR_INVALID_STACK_OPERATION",
+      "stack": []
+    },
+    {
+      "case": "eval_script_op_lshiftnum",
+      "script": "51b6",
+      "error": "SCRIPT_ERR_INVALID_STACK_OPERATION",
+      "stack": [
+        "01"
+      ]
+    },
+    {
+      "case": "eval_script_op_lshiftnum",
+      "script": "524fb6",
+      "error": "SCRIPT_ERR_INVALID_NUMBER_RANGE",
+      "stack": [
+        "02",
+        "81"
+      ]
+    },
+    {
+      "case": "eval_script_op_lshiftnum",
+      "script": "0051b6",
+      "error": null,
+      "stack": [
+        ""
+      ]
+    },
+    {
+      "case": "eval_script_op_lshiftnum",
+      "script": "5100b6",
+      "error": null,
+      "stack": [
+        "01"
+      ]
+    },
+    {
+      "case": "eval_script_op_lshiftnum",
+      "script": "5158b6",
+      "error": null,
+      "stack": [
+        "0001"
+      ]
+    },
+    {
+      "case": "eval_script_op_lshiftnum",
+      "script": "02010258b6",
+      "error": null,
+      "stack": [
+        "000102"
+      ]
+    },
+    {
+      "case": "eval_script_op_lshiftnum",
+      "script": "0301020360b6",
+      "error": null,
+      "stack": [
+        "0000010203"
+      ]
+    },
+    {
+      "case": "eval_script_op_lshiftnum",
+      "script": "5151b6",
+      "error": null,
+      "stack": [
+        "02"
+      ]
+    },
+    {
+      "case": "eval_script_op_lshiftnum",
+      "script": "5152b6",
+      "error": null,
+      "stack": [
+        "04"
+      ]
+    },
+    {
+      "case": "eval_script_op_lshiftnum",
+      "script": "5157b6",
+      "error": null,
+      "stack": [
+        "8000"
+      ]
+    },
+    {
+      "case": "eval_script_op_lshiftnum",
+      "script": "02010259b6",
+      "error": null,
+      "stack": [
+        "000204"
+      ]
+    },
+    {
+      "case": "eval_script_op_lshiftnum",
+      "script": "4f57b6",
+      "error": null,
+      "stack": [
+        "8080"
+      ]
+    },
+    {
+      "case": "eval_script_op_lshiftnum",
+      "script": "02018057b6",
+      "error": null,
+      "stack": [
+        "8080"
+      ]
+    },
+    {
+      "case": "eval_script_op_rshiftnum",
+      "script": "b7",
+      "error": "SCRIPT_ERR_INVALID_STACK_OPERATION",
+      "stack": []
+    },
+    {
+      "case": "eval_script_op_rshiftnum",
+      "script": "51b7",
+      "error": "SCRIPT_ERR_INVALID_STACK_OPERATION",
+      "stack": [
+        "01"
+      ]
+    },
+    {
+      "case": "eval_script_op_rshiftnum",
+      "script": "524fb7",
+      "error": "SCRIPT_ERR_INVALID_NUMBER_RANGE",
+      "stack": [
+        "02",
+        "81"
+      ]
+    },
+    {
+      "case": "eval_script_op_rshiftnum",
+      "script": "0051b7",
+      "error": null,
+      "stack": [
+        ""
+      ]
+    },
+    {
+      "case": "eval_script_op_rshiftnum",
+      "script": "5100b7",
+      "error": null,
+      "stack": [
+        "01"
+      ]
+    },
+    {
+      "case": "eval_script_op_rshiftnum",
+      "script": "02010258b7",
+      "error": null,
+      "stack": [
+        "02"
+      ]
+    },
+    {
+      "case": "eval_script_op_rshiftnum",
+      "script": "0301020360b7",
+      "error": null,
+      "stack": [
+        "03"
+      ]
+    },
+    {
+      "case": "eval_script_op_rshiftnum",
+      "script": "5251b7",
+      "error": null,
+      "stack": [
+        "01"
+      ]
+    },
+    {
+      "case": "eval_script_op_rshiftnum",
+      "script": "5452b7",
+      "error": null,
+      "stack": [
+        "01"
+      ]
+    },
+    {
+      "case": "eval_script_op_rshiftnum",
+      "script": "02000151b7",
+      "error": null,
+      "stack": [
+        "8000"
+      ]
+    },
+    {
+      "case": "eval_script_op_rshiftnum",
+      "script": "02008151b7",
+      "error": null,
+      "stack": [
+        "8080"
+      ]
+    },
+    {
+      "case": "eval_script_op_rshiftnum",
+      "script": "0301020459b7",
+      "error": null,
+      "stack": [
+        "0102"
+      ]
+    },
+    {
+      "case": "eval_script_op_rshiftnum",
+      "script": "5151b7",
+      "error": null,
+      "stack": [
+        ""
+      ]
+    },
+    {
+      "case": "eval_script_op_rshiftnum",
+      "script": "4f51b7",
+      "error": null,
+      "stack": [
+        ""
+      ]
+    }
+  ]
+}

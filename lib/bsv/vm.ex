@@ -1108,7 +1108,11 @@ defmodule BSV.VM do
       n when n < 0 ->
         err(vm, "OP_RSHIFTNUM invalid number range")
       n ->
-        val = ScriptNum.decode(val_bin) |> bsr(n)
+        # Rounds toward zero like the node, unlike Bitwise.bsr/2 which floors.
+        val = case ScriptNum.decode(val_bin) do
+          v when v < 0 -> -bsr(-v, n)
+          v -> bsr(v, n)
+        end
         put_in(vm.stack, [ScriptNum.encode(val) | stack])
     end
   end
