@@ -561,6 +561,28 @@ defmodule BSV.VMTest do
       assert BSV.ScriptNum.decode(result) == 4
     end
 
+    test "OP_LSHIFTNUM allows a result up to the Chronicle script number limit", %{vm: vm} do
+      # bitcoin-sv src/test/lrshiftnum_tests.cpp eval_script_op_lshiftnum_max_script_len
+      shift = ScriptNum.encode((32_000_000 - 1) * 8)
+      assert {:ok, %VM{stack: [result]}} = VM.eval(vm, [:OP_1, shift, :OP_LSHIFTNUM])
+      assert byte_size(result) == 32_000_000
+      assert :binary.last(result) == 1
+    end
+
+    test "OP_LSHIFTNUM errors past the Chronicle script number limit", %{vm: vm} do
+      # bitcoin-sv src/test/lrshiftnum_tests.cpp eval_script_op_lshiftnum_gt_max_script_len
+      shift = ScriptNum.encode(32_000_000 * 8)
+      assert {:error, %VM{error: "OP_LSHIFTNUM script number overflow"}} =
+        VM.eval(vm, [:OP_1, shift, :OP_LSHIFTNUM])
+    end
+
+    test "OP_LSHIFTNUM rejects a huge shift without computing it", %{vm: vm} do
+      shift = ScriptNum.encode(0x7FFFFFFF)
+      assert {:error, %VM{error: "OP_LSHIFTNUM script number overflow"}} =
+        VM.eval(vm, [:OP_1, shift, :OP_LSHIFTNUM])
+      assert {:ok, %VM{stack: [<<>>]}} = VM.eval(vm, [:OP_0, shift, :OP_LSHIFTNUM])
+    end
+
     test "OP_RSHIFTNUM rounds negative numbers toward zero", %{vm: vm} do
       assert {:ok, %VM{stack: [result]}} = VM.eval(vm, [ScriptNum.encode(-5), :OP_1, :OP_RSHIFTNUM])
       assert ScriptNum.decode(result) == -2

@@ -28,6 +28,10 @@ defmodule BSV.VM do
 
   @default_opts %{}
 
+  # Chronicle script number length limit in bytes.
+  # See bitcoin-sv src/consensus/consensus.h MAX_SCRIPT_NUM_LENGTH_AFTER_CHRONICLE.
+  @max_script_num_length 32_000_000
+
   defstruct ctx: nil,
             stack: [],
             alt_stack: [],
@@ -1088,8 +1092,23 @@ defmodule BSV.VM do
       n when n < 0 ->
         err(vm, "OP_LSHIFTNUM invalid number range")
       n ->
-        val = ScriptNum.decode(val_bin) |> bsl(n)
-        put_in(vm.stack, [ScriptNum.encode(val) | stack])
+        # Whole bytes of the shift are leading zero bytes of the little-endian
+        # result, so only the remaining bits are shifted numerically. The size
+        # is checked before the result is allocated.
+        case ScriptNum.decode(val_bin) do
+          0 ->
+            put_in(vm.stack, [<<>> | stack])
+
+          val ->
+            zeros = div(n, 8)
+            low = ScriptNum.encode(bsl(val, rem(n, 8)))
+
+            if zeros + byte_size(low) > @max_script_num_length do
+              err(vm, "OP_LSHIFTNUM script number overflow")
+            else
+              put_in(vm.stack, [<<0::size(zeros)-unit(8), low::binary>> | stack])
+            end
+        end
     end
   end
 
