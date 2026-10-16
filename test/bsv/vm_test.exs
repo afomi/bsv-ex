@@ -41,6 +41,13 @@ defmodule BSV.VMTest do
       assert vm.stack == ["qux"]
     end
 
+    test "skips nested conditionals in an unexecuted branch without reading the stack", %{vm: vm} do
+      # The node only pops the condition when the branch executes (interpreter.cpp OP_IF/OP_NOTIF).
+      {:ok, vm} = VM.eval(vm, [:OP_0, :OP_IF, :OP_IF, :OP_ENDIF, :OP_NOTIF, :OP_ENDIF, :OP_ENDIF, :OP_1])
+      assert vm.stack == [<<1>>]
+      assert vm.if_stack == []
+    end
+
     test "OP_VERIFY asserts truthyness", %{vm: vm} do
       {:ok, vm} = VM.eval(vm, [:OP_1, :OP_VERIFY, :OP_2])
       assert vm.stack == [<<2>>]
