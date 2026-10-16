@@ -4,58 +4,26 @@ Work through tasks in order. Each task is a user-story scenario with at least on
 
 ---
 
+## Now
+
+Chronicle malleability relaxation (Tasks 4-10 below). Branch: `chronicle-opcodes`.
+
+---
+
 ## Chronicle SIGHASH + malleability (remaining from 2026-04-13 handoff)
 
-Branch: `chronicle-opcodes` (off `update-2026-04`). No Chronicle flag — library unconditionally implements Chronicle semantics. See `.claude/inbox/done/2026-04-13-chronicle-support.md` for prior opcode work (commit `7919aab`). See `.claude/inbox/2026-04-13-chronicle-sighash-and-malleability.md` for full context and node references.
+Branch: `chronicle-opcodes` (off `update-2026-04`). No Chronicle flag — library unconditionally implements Chronicle semantics. Prior context: `.claude/inbox/done/2026-04-13-chronicle-support.md` and `.claude/inbox/done/2026-04-13-chronicle-sighash-and-malleability.md`.
 
-### Task 1 — Add SIGHASH_CHRONICLE flag constant and guard
+### Done
 
-**As a** transaction signer
-**I want** to detect when a sighash byte has the Chronicle bit (`0x20`) set
-**So that** the signing pipeline can route to the OTDA preimage builder
+- **Tasks 1-3 — SIGHASH_CHRONICLE + OTDA.** `Sig.sighash_chronicle?/1`, `Sig.otda_preimage/4`, and `preimage/4`/`sighash/4` dispatch (Chronicle bit → OTDA, ForkID only → BIP143, neither → OTDA, hash-one for out-of-range/SINGLE). Tested against BSV node vectors in `test/vectors/sighash.chronicle.json`.
+- **Task 11 — 32MB script-number note** in `lib/bsv/script_num.ex`.
+- **Opcode parity check against `@bsv/sdk` 3.2.1 and bitcoin-sv v1.2.1.** Fixed OP_VERIF/OP_VERNOTIF (compare against the 4-byte LE tx version, not OP_IF aliases), OP_RSHIFTNUM rounding toward zero, OP_LSHIFTNUM 32MB result limit, and nested conditionals inside unexecuted branches. Node vectors in `test/vectors/chronicle.verif.json` and `test/vectors/chronicle.shiftnum.json`, run by `test/bsv/vm_chronicle_vectors_test.exs`.
 
-**Acceptance:**
-- `BSV.Sig.sighash_flag(:sighash_chronicle)` returns `0x20`
-- `BSV.Sig.sighash_chronicle?(0x20)` returns `true`
-- `BSV.Sig.sighash_chronicle?(0x40)` returns `false` (forkid bit only)
-- `BSV.Sig.sighash_chronicle?(0x60)` returns `true` (both bits set)
+### Known gaps (not scheduled)
 
-**Test:** `test/bsv/sig_test.exs` — describe "sighash_chronicle? guard" with the four cases above.
-
-**Non-goal:** do NOT add CHRONICLE to `@default_sighash`. Chronicle is opt-in per the spec.
-
----
-
-### Task 2 — Implement OTDA preimage builder
-
-**As a** transaction signer opting into Chronicle
-**I want** to compute a signature preimage using the Original Transaction Digest Algorithm
-**So that** I can produce signatures valid under BSV Chronicle consensus
-
-**Acceptance:**
-- New function `BSV.Sig.otda_preimage/4` (or private helper reached via `preimage/4` dispatch). Keep separate from the BIP143 `preimage/4` body — do NOT unify.
-- Preimage matches bytes produced by the BSV node for the same `(tx, vin, prev_txout, sighash_type)` inputs.
-- Preimage construction matches pre-BIP143 Satoshi algorithm: serialize the whole tx, zero all input scripts except the subject input (which gets the subscript), append sighash type.
-
-**Test:** `test/bsv/sig_test.exs` — describe "OTDA preimage" with fixtures lifted from `bitcoin-sv/src/test/sighash_tests.cpp`. At minimum 3 vectors covering SIGHASH_ALL | CHRONICLE, SIGHASH_NONE | CHRONICLE, SIGHASH_SINGLE | CHRONICLE. Do not handwrite vectors.
-
-**Review gate:** run `/codex review` or Claude adversarial subagent on the sig.ex diff before commit. Crypto correctness, no shortcuts.
-
----
-
-### Task 3 — Route sighash dispatch to OTDA when Chronicle bit is set
-
-**As a** transaction signer
-**I want** `BSV.Sig.preimage/4` to pick OTDA when the Chronicle bit is set and BIP143 when only the forkid bit is set
-**So that** Chronicle and pre-Chronicle sigs coexist without interfering
-
-**Acceptance:**
-- `preimage(tx, vin, txout, 0x60)` (CHRONICLE | FORKID) → OTDA path
-- `preimage(tx, vin, txout, 0x41)` (ALL | FORKID) → BIP143 path (existing behavior)
-- `preimage(tx, vin, txout, 0x21)` (ALL | CHRONICLE) → OTDA path
-- Behavior when neither bit is set matches BSV node — verify in `bitcoin-sv/src/script/interpreter.cpp` before implementing.
-
-**Test:** `test/bsv/sig_test.exs` — three tests, one per dispatch arm, asserting the correct preimage shape (OTDA has no prevouts/sequence hashes; BIP143 does).
+- Numeric operands are decoded without a length limit. Multi-megabyte operands can hit the BEAM bignum limit in arithmetic opcodes. The node bounds them by `MaxScriptNumLength`, and splice operands (OP_SUBSTR/LEFT/RIGHT) by 9 bytes.
+- `@bsv/sdk` rejects Chronicle sighash on v1 transactions when no verification flags are given. That is an SDK heuristic (the node gates on block height), so this library does not adopt it.
 
 ---
 
@@ -136,18 +104,6 @@ Unlock scripts restricted to pushdata-only under this rule; v2+ allows any opcod
 
 ---
 
-### Task 11 — Document 32MB script-number consensus bump
-
-One-line comment in `lib/bsv/script_num.ex` noting the Chronicle consensus limit (32MB) so future readers know the bound when enforcement is added. No code change.
-
-**Test:** n/a (docs).
-
----
-
 ## Execution order
 
-Do Tasks 4-10 first (malleability gating, mechanical). They build familiarity with the codebase and each carries paired tests, so coverage grows as you go.
-
-Do Tasks 1-3 last (SIGHASH/OTDA). Crypto correctness needs fresh focus. Pull test vectors from the BSV node functional test suite before writing the preimage code. Run `/codex review` against the sig.ex diff before commit.
-
-Task 11 can land any time.
+Tasks 4-10 in order. Each carries paired v1/v2 tests. Grep for existing enforcement first. Where the library enforces nothing, note it in the task and move on.
