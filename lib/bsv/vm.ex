@@ -121,10 +121,8 @@ defmodule BSV.VM do
       :OP_VER -> op_ver(vm)
       :OP_IF -> op_if(vm)
       :OP_NOTIF -> op_notif(vm)
-      # Post-Chronicle OP_VERIF/OP_VERNOTIF are aliases for OP_IF/OP_NOTIF.
-      # See bitcoin-sv src/script/interpreter.cpp:771-783 (falls through).
-      :OP_VERIF -> op_if(vm)
-      :OP_VERNOTIF -> op_notif(vm)
+      :OP_VERIF -> op_verif(vm)
+      :OP_VERNOTIF -> op_vernotif(vm)
       :OP_ELSE -> op_else(vm)
       :OP_ENDIF -> op_endif(vm)
       :OP_VERIFY -> op_verify(vm)
@@ -314,6 +312,45 @@ defmodule BSV.VM do
     |> op_drop()
     |> Map.update(:if_stack, [], & [{:IF, !true?(top)} | &1])
   end
+
+  @doc """
+  Removes the top of the stack. If it equals the transaction version as a
+  4-byte little-endian value, statements between OP_VERIF and OP_ELSE are
+  executed. Otherwise statements between OP_ELSE and OP_ENDIF are executed.
+  Restored in the Chronicle upgrade (April 2026).
+  See bitcoin-sv src/script/interpreter.cpp:771-816.
+
+  Requires the VM to have been evaluated with a transaction context.
+  """
+  @spec op_verif(t()) :: t()
+  def op_verif(%__MODULE__{} = vm), do: version_conditional(vm, "OP_VERIF", true)
+
+  @doc """
+  Removes the top of the stack. If it does not equal the transaction version
+  as a 4-byte little-endian value, statements between OP_VERNOTIF and OP_ELSE
+  are executed. Otherwise statements between OP_ELSE and OP_ENDIF are executed.
+  Restored in the Chronicle upgrade (April 2026).
+  See bitcoin-sv src/script/interpreter.cpp:771-816.
+
+  Requires the VM to have been evaluated with a transaction context.
+  """
+  @spec op_vernotif(t()) :: t()
+  def op_vernotif(%__MODULE__{} = vm), do: version_conditional(vm, "OP_VERNOTIF", false)
+
+  defp version_conditional(%__MODULE__{if_stack: [{_, false} | _]} = vm, _op, _match),
+    do: Map.update(vm, :if_stack, [], & [{:IF, false} | &1])
+
+  defp version_conditional(%__MODULE__{stack: []} = vm, op, _match),
+    do: err(vm, "#{op} stack empty")
+
+  defp version_conditional(%__MODULE__{ctx: {%Tx{version: version}, _vin, _txout}, stack: [top | _]} = vm, _op, match) do
+    vm
+    |> op_drop()
+    |> Map.update(:if_stack, [], & [{:IF, (top == <<version::little-32>>) == match} | &1])
+  end
+
+  defp version_conditional(%__MODULE__{} = vm, op, _match),
+    do: err(vm, "#{op} requires a transaction context")
 
   @doc """
   If the preceding OP_IF or OP_NOTIF was not executed, the the following

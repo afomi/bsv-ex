@@ -573,14 +573,36 @@ defmodule BSV.VMTest do
         VM.eval(vm, [:OP_VER])
     end
 
-    test "OP_VERIF behaves as OP_IF (post-Chronicle alias)", %{vm: vm} do
+    test "OP_VERIF branches on a match with the tx version, not truthiness" do
+      tx = %BSV.Tx{version: 2}
+      txout = %BSV.TxOut{satoshis: 0, script: %BSV.Script{}}
+      vm = %VM{ctx: {tx, 0, txout}}
+
       assert {:ok, %VM{stack: ["yes"]}} =
+        VM.eval(vm, [<<2, 0, 0, 0>>, :OP_VERIF, "yes", :OP_ELSE, "no", :OP_ENDIF])
+      assert {:ok, %VM{stack: ["no"]}} =
         VM.eval(vm, [:OP_1, :OP_VERIF, "yes", :OP_ELSE, "no", :OP_ENDIF])
     end
 
-    test "OP_VERNOTIF behaves as OP_NOTIF (post-Chronicle alias)", %{vm: vm} do
+    test "OP_VERNOTIF branches on a mismatch with the tx version" do
+      tx = %BSV.Tx{version: 2}
+      txout = %BSV.TxOut{satoshis: 0, script: %BSV.Script{}}
+      vm = %VM{ctx: {tx, 0, txout}}
+
       assert {:ok, %VM{stack: ["no"]}} =
-        VM.eval(vm, [:OP_1, :OP_VERNOTIF, "yes", :OP_ELSE, "no", :OP_ENDIF])
+        VM.eval(vm, [<<2, 0, 0, 0>>, :OP_VERNOTIF, "yes", :OP_ELSE, "no", :OP_ENDIF])
+      assert {:ok, %VM{stack: ["yes"]}} =
+        VM.eval(vm, [:OP_2, :OP_VERNOTIF, "yes", :OP_ELSE, "no", :OP_ENDIF])
+    end
+
+    test "OP_VERIF errors without a tx context", %{vm: vm} do
+      assert {:error, %VM{error: "OP_VERIF requires a transaction context"}} =
+        VM.eval(vm, [:OP_1, :OP_VERIF, :OP_ENDIF])
+    end
+
+    test "OP_VERIF in an unexecuted branch needs no tx context", %{vm: vm} do
+      assert {:ok, %VM{stack: [<<1>>]}} =
+        VM.eval(vm, [:OP_0, :OP_IF, :OP_VERIF, :OP_ENDIF, :OP_ENDIF, :OP_1])
     end
   end
 

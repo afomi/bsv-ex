@@ -1,0 +1,361 @@
+{
+  "source": "bitcoin-sv v1.2.1 (90a1a00e6): src/test/opcode_tests.cpp",
+  "notes": [
+    "Post-Chronicle rows only (SCRIPT_UTXO_AFTER_GENESIS | SCRIPT_UTXO_AFTER_CHRONICLE).",
+    "script is raw script hex; stack is bottom-to-top hex; error is the node ScriptError or null."
+  ],
+  "vectors": [
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04010000006552",
+      "error": "SCRIPT_ERR_UNBALANCED_CONDITIONAL",
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c0401000000655267",
+      "error": "SCRIPT_ERR_UNBALANCED_CONDITIONAL",
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c01016568",
+      "error": null,
+      "stack_size": 0,
+      "stack_top": null
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c0101655268",
+      "error": null,
+      "stack_size": 0,
+      "stack_top": null
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c01016552675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "03"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c0101655267538f68",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "83"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c0201006552675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "03"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c030100006552675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "03"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c0501000000006552675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "03"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04020000006552675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "03"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04000000016552675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "03"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 0,
+      "script": "4c04000000006552675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04010000006552675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 2147483647,
+      "script": "4c04ffffff7f6552675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": -2147483648,
+      "script": "4c04000000806552675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04010000006568",
+      "error": null,
+      "stack_size": 0,
+      "stack_top": null
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c0401000000655268",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c040100000065528f68",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "82"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04010000004c04010000006565526868",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04010000004c0402000000656765526868",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04020000004c0401000000656567526868",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_verif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04020000004c040200000065676567526868",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04010000006652",
+      "error": "SCRIPT_ERR_UNBALANCED_CONDITIONAL",
+      "stack_size": 0,
+      "stack_top": null
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c0401000000665267",
+      "error": "SCRIPT_ERR_UNBALANCED_CONDITIONAL",
+      "stack_size": 0,
+      "stack_top": null
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c01016668",
+      "error": null,
+      "stack_size": 0,
+      "stack_top": null
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c0101665268",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c01026652675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c010166528f675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "82"
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c0201006652675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c030100006652675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c0501000000006652675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04020000006652675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04000000016652675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "02"
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 0,
+      "script": "4c04000000006652675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "03"
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04010000006652675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "03"
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 2147483647,
+      "script": "4c04ffffff7f6652675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "03"
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": -2147483648,
+      "script": "4c04000000806652675368",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "03"
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04010000006668",
+      "error": null,
+      "stack_size": 0,
+      "stack_top": null
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c0401000000665268",
+      "error": null,
+      "stack_size": 0,
+      "stack_top": null
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04010000006667528f68",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "82"
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04010000004c040100000066676667536868",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "03"
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04010000004c0402000000666667536868",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "03"
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04020000004c0401000000666766536868",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "03"
+    },
+    {
+      "case": "op_vernotif_post_chronicle",
+      "tx_version": 1,
+      "script": "4c04020000004c04020000006666536868",
+      "error": null,
+      "stack_size": 1,
+      "stack_top": "03"
+    }
+  ]
+}
