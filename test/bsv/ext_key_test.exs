@@ -294,4 +294,90 @@ defmodule BSV.ExtKeyTest do
     end
   end
 
+  # https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#test-vectors
+  describe "ExtKey.derive/2 BIP32 test vectors" do
+    @bip32_vectors [
+      {"000102030405060708090a0b0c0d0e0f", [
+        {"m", "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"},
+        {"m/0'", "xprv9uHRZZhk6KAJC1avXpDAp4MDc3sQKNxDiPvvkX8Br5ngLNv1TxvUxt4cV1rGL5hj6KCesnDYUhd7oWgT11eZG7XnxHrnYeSvkzY7d2bhkJ7"},
+        {"m/0'/1", "xprv9wTYmMFdV23N2TdNG573QoEsfRrWKQgWeibmLntzniatZvR9BmLnvSxqu53Kw1UmYPxLgboyZQaXwTCg8MSY3H2EU4pWcQDnRnrVA1xe8fs"},
+        {"m/0'/1/2'", "xprv9z4pot5VBttmtdRTWfWQmoH1taj2axGVzFqSb8C9xaxKymcFzXBDptWmT7FwuEzG3ryjH4ktypQSAewRiNMjANTtpgP4mLTj34bhnZX7UiM"},
+        {"m/0'/1/2'/2", "xprvA2JDeKCSNNZky6uBCviVfJSKyQ1mDYahRjijr5idH2WwLsEd4Hsb2Tyh8RfQMuPh7f7RtyzTtdrbdqqsunu5Mm3wDvUAKRHSC34sJ7in334"},
+        {"m/0'/1/2'/2/1000000000", "xprvA41z7zogVVwxVSgdKUHDy1SKmdb533PjDz7J6N6mV6uS3ze1ai8FHa8kmHScGpWmj4WggLyQjgPie1rFSruoUihUZREPSL39UNdE3BBDu76"}
+      ]},
+      {"fffcf9f6f3f0edeae7e4e1dedbd8d5d2cfccc9c6c3c0bdbab7b4b1aeaba8a5a29f9c999693908d8a8784817e7b7875726f6c696663605d5a5754514e4b484542", [
+        {"m", "xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssrdK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U"},
+        {"m/0", "xprv9vHkqa6EV4sPZHYqZznhT2NPtPCjKuDKGY38FBWLvgaDx45zo9WQRUT3dKYnjwih2yJD9mkrocEZXo1ex8G81dwSM1fwqWpWkeS3v86pgKt"},
+        {"m/0/2147483647'", "xprv9wSp6B7kry3Vj9m1zSnLvN3xH8RdsPP1Mh7fAaR7aRLcQMKTR2vidYEeEg2mUCTAwCd6vnxVrcjfy2kRgVsFawNzmjuHc2YmYRmagcEPdU9"},
+        {"m/0/2147483647'/1", "xprv9zFnWC6h2cLgpmSA46vutJzBcfJ8yaJGg8cX1e5StJh45BBciYTRXSd25UEPVuesF9yog62tGAQtHjXajPPdbRCHuWS6T8XA2ECKADdw4Ef"},
+        {"m/0/2147483647'/1/2147483646'", "xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc"},
+        {"m/0/2147483647'/1/2147483646'/2", "xprvA2nrNbFZABcdryreWet9Ea4LvTJcGsqrMzxHx98MMrotbir7yrKCEXw7nadnHM8Dq38EGfSh6dqA9QWTyefMLEcBYJUuekgW4BYPJcr9E7j"}
+      ]}
+    ]
+
+    test "vectors 1 and 2 derive the published xprvs" do
+      for {seed, nodes} <- @bip32_vectors, {path, xprv} <- nodes do
+        master = ExtKey.from_seed!(seed, encoding: :hex)
+        assert ExtKey.derive(master, path) |> ExtKey.to_string() == xprv, "#{seed} #{path}"
+      end
+    end
+  end
+
+  describe "ExtKey.derive/2 path limits" do
+    setup do
+      master = ExtKey.from_seed!(@test_seed, encoding: :hex)
+      %{priv: master, pub: ExtKey.to_public(master)}
+    end
+
+    test "m alone is the key itself, and M alone its public key", %{priv: master, pub: pub} do
+      assert ExtKey.derive(master, "m") == master
+      assert ExtKey.derive(master, "M") == pub
+      assert ExtKey.derive(pub, "M") == pub
+    end
+
+    test "h marks a hardened step, like '", %{priv: master} do
+      assert ExtKey.derive(master, "m/44h/0h/0h/0/7") == ExtKey.derive(master, "m/44'/0'/0'/0/7")
+    end
+
+    test "the largest normal and hardened indexes derive and round-trip", %{priv: master, pub: pub} do
+      normal = ExtKey.derive(master, "m/2147483647")
+      assert normal.child_index == 2_147_483_647
+      assert ExtKey.derive(pub, "M/2147483647").pubkey == normal.pubkey
+
+      hardened = ExtKey.derive(master, "m/2147483647'")
+      assert hardened.child_index == 4_294_967_295
+      assert {:ok, ^hardened} = hardened |> ExtKey.to_string() |> ExtKey.from_string()
+    end
+
+    test "an index past 2^31-1 is refused, never wrapped", %{priv: master} do
+      for path <- ["m/2147483648'", "m/4294967296'", "m/4294967296"] do
+        assert_raise ArgumentError, ~r/out of range/, fn -> ExtKey.derive(master, path) end
+      end
+    end
+
+    test "an unmarked index of 2^31 or more is refused, not read as hardened", %{priv: master} do
+      assert_raise ArgumentError, ~r/out of range/, fn -> ExtKey.derive(master, "m/2147483648") end
+    end
+
+    test "depth stops at 255, the most a serialized key can hold", %{priv: master} do
+      deepest = ExtKey.derive(master, "m" <> String.duplicate("/0", 255))
+      assert deepest.depth == 255
+      assert {:ok, %ExtKey{depth: 255}} = deepest |> ExtKey.to_string() |> ExtKey.from_string()
+
+      assert_raise ArgumentError, ~r/depth cannot exceed 255/, fn -> ExtKey.derive(deepest, "m/0") end
+    end
+
+    test "to_string refuses a depth it cannot encode", %{priv: master} do
+      assert_raise ArgumentError, ~r/cannot be serialized/, fn ->
+        ExtKey.to_string(%{master | depth: 256})
+      end
+    end
+
+    test "a malformed path raises ArgumentError", %{priv: master} do
+      for path <- ["", "m/", "m/0/", "m/0/abc", "m/0x", "m/-1", "m//0", "x/0", "m/0'/1''", " m/0"] do
+        assert_raise ArgumentError, ~r/invalid derivation path/i, fn -> ExtKey.derive(master, path) end
+      end
+    end
+  end
+
 end
