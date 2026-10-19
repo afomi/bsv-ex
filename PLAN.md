@@ -107,3 +107,37 @@ Unlock scripts restricted to pushdata-only under this rule; v2+ allows any opcod
 ## Execution order
 
 Tasks 4-10 in order. Each carries paired v1/v2 tests. Grep for existing enforcement first. Where the library enforces nothing, note it in the task and move on.
+
+---
+
+## Next — BIP32 derivation path validation (from Qart, 2026-10-19)
+
+Source: `.claude/inbox/done/from-qart-2026-10-19-derivation-path-validation.md` (full repro table). Start after the Chronicle thread. Qart is waiting on a reply to `~/workspace/qart/.claude/inbox/` naming the commit.
+
+### Task 12 — Reject derivation paths outside BIP32's limits
+
+**Status (2026-10-19):** implemented in the working tree, uncommitted (`lib/bsv/ext_key.ex`, `test/bsv/ext_key_test.exs`); `mix test` passes (413 tests, 88 doctests, 0 failures).
+Every acceptance row was checked with `mix run` against the new code, including all 12 nodes of BIP32 vectors 1 and 2.
+The optional `derive_index/2` was not added.
+Once committed, reply to `~/workspace/qart/.claude/inbox/` with the commit hash.
+
+**As a** wallet author
+**I want** an `ArgumentError` for any derivation path outside BIP32's limits
+**So that** I never silently get a different key
+
+**Current defects in `lib/bsv/ext_key.ex` (confirmed by reading the code):**
+- The path regex `~r/^[mM](\/\d+'?)+/` has no end anchor. `"m/0/abc"`, `"m/0/"` and `"m/0h"` pass it, and then `path_chunk_to_integer/1` raises `CaseClauseError`.
+- Indexes are not range-checked. `"m/4294967296'"` wraps to the same key as `m/0'` through `<<index::32>>`. `"m/4294967296"` takes the hardened branch with `index::32 = 0` and stores `child_index: 4294967296`.
+- An unmarked index ≥ 2^31 (`"m/2147483648"`) is treated as hardened.
+- `depth` is not bounded. Past 255 it serializes wrongly (`depth::8` in `from_string/1` and `to_string/1`).
+- Bare `"m"` / `"M"` raises instead of returning the key (or its public key).
+
+**Acceptance:**
+- Whole-path match `^[mM](/\d+['h]?)*$`, accepting both `'` and `h` as the hardened marker. Bare `m` returns the key unchanged, and bare `M` returns `to_public(key)`.
+- Each index must be in `0..2^31-1` before the hardened offset is added. Unmarked indexes ≥ 2^31 are rejected (strict notation), and the `derive/2` doc says so.
+- A derivation that would take `depth` past 255 raises `ArgumentError`. `to_string/1` also guards it, so a hand-built struct can't encode a wrong depth.
+- Keep the current behaviour for `M/0'` from a public key ("Cannot derive hardened public child") and for `m/-1` (`ArgumentError`).
+- Optional: a public `derive_index/2` that takes integer indexes, for callers who compute them (dates, hashes).
+- Existing derivations are unchanged: the current bip32/bip44 tests and the `m/44'/0'/0'/0/99` doctest still pass.
+
+**Test:** `test/bsv/ext_key_test.exs`, one test per row of the handoff table. Add the official BIP32 test vector 1 and 2 chains. The current `derive/2` tests use their own master key, not those vectors.
