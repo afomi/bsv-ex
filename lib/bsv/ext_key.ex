@@ -83,6 +83,8 @@ defmodule BSV.ExtKey do
   }
 
   @mersenne_prime 2_147_483_647
+  # Depth is one byte in a serialized extended key.
+  @max_depth 255
 
   defguardp normal?(index) when index >= 0 and index <= @mersenne_prime
   defguardp hardened?(index) when index > @mersenne_prime
@@ -292,6 +294,9 @@ defmodule BSV.ExtKey do
       "xpub661MyMwAqRbcGKh4TLMvpYM8a2Fgo3Hath8cnnDWuZRJQwjYwgY8JoB2tTgiTDdwf4rdGvgUpGhGNH54Ycb8vegrhHVVpdfYCdBBii94CLF"
   """
   @spec to_string(t()) :: xprv() | xpub()
+  def to_string(%__MODULE__{depth: depth}) when depth > @max_depth,
+    do: raise(ArgumentError, "Extended key depth #{depth} cannot be serialized (max #{@max_depth})")
+
   def to_string(%__MODULE__{privkey: %PrivKey{}} = extkey) do
     <<version_byte, version::binary>> = @privkey_version_bytes[BSV.network()]
     privkey = PrivKey.to_binary(extkey.privkey)
@@ -325,6 +330,13 @@ defmodule BSV.ExtKey do
   Derives a new `t:BSV.ExtKey.t/0` from the given extended key and
   `t:BSV.ExtKey.derivation_path/0`.
 
+  A path is `m` (private) or `M` (public) followed by any number of `/i`
+  steps, where `i` is 0..2147483647 and a trailing `'` or `h` marks it
+  hardened. `m` or `M` alone returns the key itself (`M` as its public key).
+  BIP32's limits are enforced, never wrapped: an index out of range (including
+  an unmarked index of 2^31 or more), a depth past 255, or a malformed path
+  raises `ArgumentError`.
+
   ## Example
 
       iex> ExtKey.derive(@extkey, "m/44'/0'/0'/0/99")
@@ -349,41 +361,41 @@ defmodule BSV.ExtKey do
   """
   @spec derive(t(), derivation_path()) :: t()
   def derive(%__MODULE__{} = extkey, path) when is_binary(path) do
-    case String.match?(path, ~r/^[mM](\/\d+'?)+/) do
-      true ->
-        derive_pathlist(extkey, get_pathlist(path))
-      false ->
+    case Regex.run(~r/\A([mM])((?:\/\d+['h]?)*)\z/, path) do
+      [_, kind, steps] ->
+        derive_pathlist(extkey, {path_kind(kind), get_pathlist(steps)})
+
+      nil ->
         raise ArgumentError, "Invalid derivation path"
     end
   end
 
-  # Returns a list of integers from the given path string
-  defp get_pathlist(<<"m/", path::binary>>), do: {:private, get_pathlist(path)}
-  defp get_pathlist(<<"M/", path::binary>>), do: {:public, get_pathlist(path)}
+  defp path_kind("m"), do: :private
+  defp path_kind("M"), do: :public
 
-  defp get_pathlist(path) do
-    String.split(path, "/")
-    |> Enum.map(&path_chunk_to_integer/1)
+  # Returns a list of integers from the given path steps ("/44'/0'/0")
+  defp get_pathlist(steps) do
+    ~r/\/(\d+)(['h]?)/
+    |> Regex.scan(steps)
+    |> Enum.map(fn [_, index, mark] -> path_index(String.to_integer(index), mark) end)
   end
 
-  # Returns a hardened or normal integer from the given path chunk
-  defp path_chunk_to_integer(chunk) do
-    case Regex.run(~r/(\d+)(')?$/, chunk) do
-      [_, chunk, "'"] ->
-        chunk
-        |> String.to_integer()
-        |> Kernel.+(@mersenne_prime + 1)
+  # A step is 0..2^31-1, with a hardened mark adding 2^31. An unmarked step of
+  # 2^31 or more is refused rather than read as hardened.
+  defp path_index(index, "") when normal?(index), do: index
+  defp path_index(index, _hardened) when normal?(index), do: index + @mersenne_prime + 1
 
-      [_, chunk] ->
-        String.to_integer(chunk)
-    end
-  end
+  defp path_index(index, _mark),
+    do: raise(ArgumentError, "Derivation index #{index} is out of range (0..#{@mersenne_prime})")
 
   # Iterrates over the pathlist to derive keys
-  defp derive_pathlist(key, {_type, []}), do: key
-
   defp derive_pathlist(%{privkey: %PrivKey{}} = key, {:public, pathlist}),
     do: derive_pathlist(to_public(key), {:public, pathlist})
+
+  defp derive_pathlist(key, {_type, []}), do: key
+
+  defp derive_pathlist(%{depth: depth}, _path) when depth >= @max_depth,
+    do: raise(ArgumentError, "Derivation depth cannot exceed #{@max_depth}")
 
   defp derive_pathlist(%{privkey: nil}, {:private, _pathlist}),
     do: raise ArgumentError, "Cannot derive private child from public parent"
