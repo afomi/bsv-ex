@@ -486,6 +486,24 @@ defmodule BSV.VMTest do
       assert {:ok, %VM{stack: [<<>>]}} = VM.eval(vm, script)
     end
 
+    test "OP_CHECKMULTISIG returns false if one signature is pushed twice", %{keys: keys, sigs: sigs, vm: vm} do
+      [sig | _] = sigs
+      script = [:OP_0, sig, sig] ++ [:OP_2 | keys] ++ [:OP_3, :OP_CHECKMULTISIG]
+      assert {:ok, %VM{stack: [<<>>]}} = VM.eval(vm, script)
+    end
+
+    test "OP_CHECKMULTISIG returns false if one signature is pushed for every key", %{keys: keys, sigs: sigs, vm: vm} do
+      sig = List.last(sigs)
+      script = [:OP_0, sig, sig, sig] ++ [:OP_3 | keys] ++ [:OP_3, :OP_CHECKMULTISIG]
+      assert {:ok, %VM{stack: [<<>>]}} = VM.eval(vm, script)
+    end
+
+    test "OP_CHECKMULTISIG returns false if a signature matches none of the keys", %{keys: keys, sigs: sigs, vm: vm} do
+      [_skip | sigs] = sigs
+      script = [:OP_0 | sigs] ++ [:OP_2 | Enum.take(keys, 2)] ++ [:OP_2, :OP_CHECKMULTISIG]
+      assert {:ok, %VM{stack: [<<>>]}} = VM.eval(vm, script)
+    end
+
     test "OP_CHECKMULTISIG returns false if junk value doesn't exist", %{keys: keys, sigs: sigs, vm: vm} do
       script = sigs ++ [:OP_3 | keys] ++ [:OP_3, :OP_CHECKMULTISIG]
       assert {:ok, %VM{stack: [<<>>]}} = VM.eval(vm, script)
