@@ -1234,17 +1234,7 @@ defmodule BSV.VM do
       sigs = Enum.reverse(sigs)
       pubkeys = Enum.reverse(pubkeys)
 
-      # Iterate over sigs and build list of valid sigs and used keys
-      {valid, _} = Enum.reduce(sigs, {[], []}, fn signature, {valid, usedkeys} ->
-        # Iterate keys minus used keys until signature verifies
-        Enum.reduce_while(pubkeys -- usedkeys, {valid, usedkeys}, fn pubkey, {valid, usedkeys} ->
-          if Sig.verify(signature, tx, vin, txout, PubKey.from_binary!(pubkey)),
-            do: {:halt, {[signature | valid], [pubkey | usedkeys]}},
-            else: {:cont, {valid, [pubkey | usedkeys]}}
-        end)
-      end)
-
-      case Enum.all?(sigs, & &1 in valid) do
+      case multisig_valid?(sigs, pubkeys, {tx, vin, txout}) do
         true -> put_in(vm.stack, [<<1>> | stack])
         _ -> put_in(vm.stack, [<<>> | stack])
       end
@@ -1255,6 +1245,19 @@ defmodule BSV.VM do
 
   def op_checkmultisig(%__MODULE__{} = vm),
     do: err(vm, "OP_CHECKMULTISIG invalid TX context")
+
+  # Walks the signatures and the public keys together, in order, as a node
+  # does. A key that verifies a signature is used up with it, and a key that
+  # doesn't is skipped for good. Every signature needs its own key, so the
+  # same signature pushed twice can't count twice.
+  defp multisig_valid?([], _pubkeys, _ctx), do: true
+  defp multisig_valid?(_sigs, [], _ctx), do: false
+
+  defp multisig_valid?([signature | rest] = sigs, [pubkey | pubkeys], {tx, vin, txout} = ctx) do
+    if Sig.verify(signature, tx, vin, txout, PubKey.from_binary!(pubkey)),
+      do: multisig_valid?(rest, pubkeys, ctx),
+      else: multisig_valid?(sigs, pubkeys, ctx)
+  end
 
   @doc """
   Runs `op_checkmultisig/1` and `op_verify/1`.
